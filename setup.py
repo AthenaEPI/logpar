@@ -40,7 +40,5 @@ setup(name=package_name,
       include_package_data=True,
       ext_modules=ext_modules,
       packages=[package_name, cli_module, utils_module],
-      scripts=['bin/resample_volume', 'bin/seeds_from_surface',
-               'bin/trkgenerator', 'bin/trk2connectome',
-               'bin/cifti_parcellate', 'bin/extract_parcellation'],
+      scripts=['bin/cifti_parcellate', 'bin/extract_parcellation'],
       zip_safe=False)

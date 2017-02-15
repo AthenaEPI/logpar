@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 ''' Command Line Interface of extract_parcellation '''
 import argparse
-from logpar.cli.extract_parcellation import extract_parcellation 
+from logpar.cli.extract_parcellation import extract_parcellation
 
 
 if __name__ == "__main__":
@@ -17,13 +17,9 @@ if __name__ == "__main__":
     parser.add_argument('-txtlab', dest='txtout', type=str,
                         help='Text file where to save the labels')
 
-    parser.add_argument('-structure_indices', dest='indices_file',
-                        type=str, help='Labeled surface to use as reference')
-
-    parser.add_argument('-ciftilabel',  dest='labelout', type=str,
+    parser.add_argument('-ciftilabel', dest='labelout', type=str,
                         help='CIFTI label file to write out')
-
     args = parser.parse_args()
 
-    extract_parcellation(args.dendrogram, args.nparcels, args.txtout, 
-                         args.indices_labels, args.labelout)
+    extract_parcellation(args.dendrogram, args.nparcels,
+                         args.txtout, args.labelout)

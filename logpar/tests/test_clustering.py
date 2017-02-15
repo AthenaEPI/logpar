@@ -31,14 +31,12 @@ def test_invalid_cases_fails():
     right_const = numpy.ones((n,n)) - numpy.eye(n)
 
     # 1. Wrong method - 2. Wrong constraints - 3. Wrong clustering size
-    # 4. Using clustering size without constraints
     failing_functions = [lambda: our_hie.clustering(features, method='none'),
                          lambda: our_hie.clustering(features, 
                                                     constraints=wrong_const),
                          lambda: our_hie.clustering(features, 
                                                     constraints=right_const,
-                                                    min_size=-3),
-                         lambda: our_hie.clustering(features, min_size=3)]
+                                                    min_size=-3)]
 
     for i, f in enumerate(failing_functions):
         if not try_function(f):

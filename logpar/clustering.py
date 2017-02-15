@@ -15,10 +15,6 @@ def check_input(method, constraints, min_size):
     if min_size < 0:
         raise ValueError("min_size MUST be greater or equal to zero")
 
-    if constraints is None and min_size > 0:
-        raise ValueError("If no constraints are given then \
-                          min_size MUST be zero")
-
 
 def clustering(features, method='ward', constraints=None, min_size=0,
                copy=True, verbose=False):

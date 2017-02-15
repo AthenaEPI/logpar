@@ -1,40 +1,42 @@
 #!/usr/bin/env python
 ''' Tool to parcelate a cifti connectivity file'''
-
-from logpy.cli.cifti_parcellate import cifti_parcellate
+import argparse
+from logpar.cli.cifti_parcellate import cifti_parcellate
 
 if __name__ == "__main__":
-    import argparse
 
     # Parser
-    parser = argparse.ArgumentParser(description='Tool to cluster a cifti 
+    parser = argparse.ArgumentParser(description='Tool to cluster a cifti \
                                      connectivity file. ')
 
     parser.add_argument('-cifti', dest='cifti', required=True, type=str,
                         help='Connectivity matrix to cluster')
 
-    parser.add_argument('-direction', dest='direction',type=str,
+    parser.add_argument('-direction', dest='direction', type=str,
                         default="ROWS",
                         help='Connectivity matrix to cluster')
 
     parser.add_argument('-constraints', dest='constraints', required=False,
-                        type=str, help='Surface/Volume from were to extract
+                        type=str, help='Surface/Volume from were to extract\
                                         neighborhood constraints')
 
     parser.add_argument('-threshold', dest='threshold', required=False,
-                        type=float, default=0, 
+                        type=float, default=0,
                         help='Threshold to apply before clustering')
+
+    parser.add_argument('-transform', dest='tologodds', action='store_true',
+                        help='If present, the features are transformed with the\
+                              logit function')
 
     parser.add_argument('-min_size', dest='min_size', required=False,
-                        type=float, default=45, 
+                        type=float, default=45,
                         help='Threshold to apply before clustering')
 
-    parser.add_argument('-out', dest='outfile', required=True, 
-                        type=str, help='outfile to write the dendrogram as a
+    parser.add_argument('-out', dest='outfile', required=True,
+                        type=str, help='outfile to write the dendrogram as a\
                                         csv file')
 
     args = parser.parse_args()
 
-    cifti_parcellate(args.cifti, args.direction, args.constraints,
-                     args.surf_mask, args.threshold, args.min_size,
-                     args.outfile)
+    cifti_parcellate(args.cifti, args.outfile, args.direction, args.tologodds,
+                     args.constraints, args.threshold, args.min_size, 0)
