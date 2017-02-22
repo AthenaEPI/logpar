@@ -12,7 +12,6 @@ from ...utils import dendrogram_utils, cifti_utils
 def test_correctly_configured():
     ''' Tests the dendrogram extraction for different parameters
         TODO: Improve this '''
-    txtout = NamedTemporaryFile(mode='w', delete=True, suffix='.txt').name
 
     for name in ['all', 'left', 'right']:
         logging.debug('---- Start {} -----'.format(name))
@@ -24,7 +23,7 @@ def test_correctly_configured():
         label_out = label_out.name
 
         extract_parcellation.extract_parcellation(dendrogram, parcels,
-                                                  txtout, label_out)
+                                                  label_out)
         dlabel = nibabel.load(label_out)
 
         dlabel_brainmodels = cifti_utils.extract_brainmodel(dlabel.header,
@@ -41,8 +40,9 @@ def test_correctly_configured():
             )
 
         labels = dlabel_xml_header.findall('.//Label')
-
-        numpy.testing.assert_equal(len(labels), parcels)
+        
+        # We should have #parcels + '???'background
+        numpy.testing.assert_equal(len(labels), parcels+1)
 
         print dlabel.get_data()[0, 0, 0, 0, 0,].shape
         numpy.testing.assert_equal(dlabel.get_data()[0, 0, 0, 0, 0].max(),

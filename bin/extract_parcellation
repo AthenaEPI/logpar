@@ -14,12 +14,10 @@ if __name__ == "__main__":
     parser.add_argument('-parcels', dest='nparcels', required=True,
                         type=int, help='Number of parcels to extract')
 
-    parser.add_argument('-txtlab', dest='txtout', type=str,
-                        help='Text file where to save the labels')
+    parser.add_argument('-out', dest='outfile', type=str, required=True,
+                        help='txt or dlabel.nii file where to write the \
+                              resulting parcellation')
 
-    parser.add_argument('-ciftilabel', dest='labelout', type=str,
-                        help='CIFTI label file to write out')
     args = parser.parse_args()
 
-    extract_parcellation(args.dendrogram, args.nparcels,
-                         args.txtout, args.labelout)
+    extract_parcellation(args.dendrogram, args.nparcels, args.outfile)

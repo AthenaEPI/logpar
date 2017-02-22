@@ -7,8 +7,13 @@ from scipy.cluster.hierarchy import fcluster
 from ..utils import cifti_utils, dendrogram_utils
 
 
-def extract_parcellation(dendrogram_file, nparcels,
-                         txtout=None, labelout=None):
+def check_input(outfile):
+    ''' Basic output checking '''
+    if not outfile.endswith('txt') and not outfile.endswith('.dlabel.nii'):
+        raise ValueError("Outfile MUST be .txt or .dlabel.nii")
+
+
+def extract_parcellation(dendrogram_file, nparcels, outfile):
     ''' Extracts a parcellation with a predefined number of parcels. If
         setted, also writes a cifti label file
 
@@ -18,18 +23,15 @@ def extract_parcellation(dendrogram_file, nparcels,
             File with the dendrogram, in csv format
         nparcels: int
             Numbers of parcels the extracted parcellation should have
-        txtout: string (optional)
-            File where to write the labels as plane text
-        indices_file: string (optional)
-            File from where to extract information of the structure to use in
-            the cifti label file
-        labelout: string (optional)
-            File where to write the CIFTI label file
+        out: string
+            File where to write the parcellation (Either TXT or CIFTI DLABEL)
 
         Returns
         -------
         None
             One or more files a created '''
+    check_input(outfile)
+
     dendrogram, xml_structures = dendrogram_utils.load(dendrogram_file)
 
     heights = sorted(numpy.unique(dendrogram[:, 2]))
@@ -47,12 +49,11 @@ def extract_parcellation(dendrogram_file, nparcels,
             break
 
     # Save the parcellation
-    if txtout is not None:
-        numpy.savetxt(txtout, parcellation, delimiter=',')
-
-    if labelout is not None:
+    if outfile.endswith('txt'):
+        numpy.savetxt(outfile, parcellation, delimiter=',')
+    else:
         cifti_label_header = cifti_utils.label_header(xml_structures, nparcels)
 
-        cifti_utils.save_cifti(labelout,
+        cifti_utils.save_cifti(outfile,
                                parcellation[None, None, None, None, None, ...],
                                header=cifti_label_header)

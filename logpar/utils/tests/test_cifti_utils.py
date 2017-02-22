@@ -90,8 +90,9 @@ def test_label_color():
 
     extension_xml = xml.fromstring(lt_header.extensions[0].get_content())
     labels = extension_xml.findall('.//Label')
-
-    numpy.testing.assert_equal(len(labels), nlabels)
+    
+    # Number of labels + '???'background
+    numpy.testing.assert_equal(len(labels), nlabels+1)
 
 
 def test_constraint_matrix():

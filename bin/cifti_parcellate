@@ -13,8 +13,8 @@ if __name__ == "__main__":
                         help='Connectivity matrix to cluster')
 
     parser.add_argument('-direction', dest='direction', type=str,
-                        default="ROWS",
-                        help='Connectivity matrix to cluster')
+                        default="COLUMN",
+                        help='Direction to parcellate: ROW or COLUMN')
 
     parser.add_argument('-constraints', dest='constraints', required=False,
                         type=str, help='Surface/Volume from were to extract\

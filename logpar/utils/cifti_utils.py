@@ -216,11 +216,15 @@ def soft_colors_xml_label_map(nlabels):
                                         'Green':'0', 'Key':'0'})
     background.text = '???'
 
-    for key in range(1, nlabels):
-        red, green, blue = map(str, colors[(key-1)%ncolors])
+    for key in range(1, nlabels+1):
+        red, green, blue = colors[(key-1)%ncolors]
+        if red == green and green == blue:
+            # remove this gray
+            red, blue = 0.7*red, 0.95*blue
         label = xml.SubElement(label_table, 'Label',
-                               attrib={'Alpha':'1', 'Blue':blue, 'Red':red,
-                                       'Green':green, 'Key':str(key)})
+                               attrib={'Alpha':'1', 'Blue':str(blue),
+                                       'Red':str(red), 'Green':str(green),
+                                       'Key':str(key)})
         label.text = str(key)
     return named_map
 
