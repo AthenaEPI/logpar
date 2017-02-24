@@ -22,6 +22,28 @@ def load_data(filename):
     return nibabel.load(filename).get_data()
 
 
+def is_model_surf(model):
+    return model == 'CIFTI_MODEL_TYPE_SURFACE'
+
+
+def text2voxels(text):
+    voxels = text.split()
+    indices = numpy.reshape(voxels, (len(voxels)/3, 3))
+    return indices
+
+
+def voxels2text(voxels):
+    return " ".join(["{0} {1} {2}".format(x, y, z) for x, y, z in voxels])
+
+
+def text2indices(text):
+    return numpy.array(text.split(), dtype=int)
+
+
+def indices2text(indices):
+    return " ".join(map(str, indices))
+
+
 def surface_attributes(cifti_header, surface, direction):
     ''' Retrieves the offset and used indices of a surface
         structure in a cifti file.
@@ -123,6 +145,34 @@ def extract_brainmodel(cifti_header, structure, direction):
         query = "./BrainModel[@BrainStructure='{}']".format(structure)
         brain_model = matrix_indices.findall(query)
     return brain_model
+
+
+def extract_parcel(cifti_header, name, direction):
+    ''' Retrieves the xml of a parcel from a cifti file.
+
+       Parameters
+       ----------
+       cifti_header: cifti header
+           Header of the cifti file
+       name: string
+           Name of label
+       direction: string
+           ROW or COLUMN
+
+       Returns
+       -------
+       xml_entitie
+       Returns an xml (Elemtree) object
+    '''
+    matrix_indices = extract_matrixIndicesMap(cifti_header, direction)
+
+    if name == 'ALL':
+        query = "./Parcel"
+        parcel = matrix_indices.findall(query)
+    else:
+        query = "./Parcel[@Name='{}']".format(name)
+        parcel = matrix_indices.findall(query)
+    return parcel
 
 
 def principal_structure(gifti_obj):

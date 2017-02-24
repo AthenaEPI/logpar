@@ -40,5 +40,6 @@ setup(name=package_name,
       include_package_data=True,
       ext_modules=ext_modules,
       packages=[package_name, cli_module, utils_module],
-      scripts=['bin/cifti_parcellate', 'bin/extract_parcellation'],
+      scripts=['bin/cifti_parcellate', 'bin/extract_parcellation',
+               'bin/cifti_average'],
       zip_safe=False)
