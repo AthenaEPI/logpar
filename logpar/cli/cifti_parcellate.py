@@ -88,7 +88,6 @@ def cifti_parcellate(cifti_file, outfile, direction="ROW", to_logodds=True,
                                                          structure,
                                                          direction)
         features = features[offset:offset+len(indices)]
-
         logging.debug("structure: {}, direction: {}, offset: {},\
                        len(indices): {}, shape:{}".format(structure, direction,
                                                           offset, len(indices),
@@ -152,9 +151,25 @@ def cifti_parcellate(cifti_file, outfile, direction="ROW", to_logodds=True,
     new_offset = 0
     vstruct = False
     for structure in xml_structures:
-        vstruct += (structure.attrib['ModelType'] == 'CIFTI_MODEL_TYPE_VOXELS')
+
+        if (structure.attrib['ModelType'] == 'CIFTI_MODEL_TYPE_SURFACE'):
+
+            _, indices = cifti_utils.surface_attributes(cifti.header,
+                                                        structure.attrib['BrainStructure'],
+                                                        direction)
+            indices = indices[nzr_rows[:len(indices)]]
+            structure[0].text = cifti_utils.indices2text(indices)
+            new_count = len(indices)
+        else:
+            #TODO: Implement this function and correct this else
+            #_, indices = cifti_utils.voxels_attributes(cifti.header,
+            #                                           structure.attrib['BrainStructure']
+            #                                           direction)
+            vstruct = True
+            new_count = int(structure.attrib['IndexCount'])
         structure.attrib['IndexOffset'] = str(new_offset)
-        new_offset += int(structure.attrib['IndexCount'])
+        structure.attrib['IndexCount'] = str(new_count)
+        new_offset += new_count
 
     if vstruct > 0:
         # There's a voxel structure, we need to add volume information

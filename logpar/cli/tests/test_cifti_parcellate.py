@@ -84,12 +84,12 @@ def test_correctly_configured():
                     # There's a voxel structure: ,add volume information
                     volume_xml = cifti_utils.extract_volume(header, direction)
                     cifti_xml += volume_xml
-
-                assert(len(cifti_xml) == len(sxml))
+                
+                numpy.testing.assert_equal(len(sxml), len(cifti_xml))
 
                 for original, retrieved in zip(cifti_xml, sxml):
-                    numpy.testing.assert_equal(xml.tostring(original),
-                                               xml.tostring(retrieved))
+                    numpy.testing.assert_equal(xml.tostring(retrieved),
+                                               xml.tostring(original))
 
 
 def test_correctly_configured_32bit():

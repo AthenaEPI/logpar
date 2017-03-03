@@ -52,7 +52,8 @@ def extract_parcellation(dendrogram_file, nparcels, outfile):
     if outfile.endswith('txt'):
         numpy.savetxt(outfile, parcellation, delimiter=',')
     else:
-        cifti_label_header = cifti_utils.label_header(xml_structures, nparcels)
+        cifti_label_header = cifti_utils.label_header(xml_structures,
+                                                      nparcels+1)
 
         cifti_utils.save_cifti(outfile,
                                parcellation[None, None, None, None, None, ...],

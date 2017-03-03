@@ -7,11 +7,16 @@ from logpar.utils import cifti_utils
 
 
 def pos_in_array(arr1, arr2, offset):
+    ''' Returns in which position of arr2 is each element of arr1.
+        If the element is not found, returns the position -1 '''
     pos_indice = numpy.zeros_like(arr1, dtype=int)
 
     for i, elem in enumerate(arr1):
         pos_in_arr2 = (arr2==elem).nonzero()[0]
-        pos_indice[i] = pos_in_arr2 + offset
+        if pos_in_arr2:
+            pos_indice[i] = pos_in_arr2 + offset
+        else:
+            pos_indice[i] = -1
     return pos_indice
 
 

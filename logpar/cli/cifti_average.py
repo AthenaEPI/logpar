@@ -2,14 +2,12 @@
 import nibabel
 import numpy
 
-from logpar.utils import other_utils, cifti_utils
+from logpar.utils import other_utils, cifti_utils, transform
 
 
 def check_input(matrix_files, outfile):
     ''' Basic input check '''
-    
     conn_type = matrix_files[0].split('.')[-2]
-    print conn_type
 
     if not all([name.split('.')[-2] == conn_type for name in matrix_files]):
         raise ValueError('All the input files MUST be of the same type')
@@ -18,7 +16,7 @@ def check_input(matrix_files, outfile):
         raise ValueError('The output file MUST be of the same type as inputs')
 
 
-def cifti_average(matrix_files, outfile):
+def cifti_average(matrix_files, outfile, in_logodds=False):
 
     check_input(matrix_files, outfile)
 
@@ -39,10 +37,16 @@ def cifti_average(matrix_files, outfile):
 
     matrices = [nibabel.load(mat) for mat in matrix_files] 
     for i, matrix in enumerate(matrices):
-        print matrix_files[i]
-        average_connectivity += structures_manager.extract_common_struc(matrix)
+        subject_conn = structures_manager.extract_common_struc(matrix)
+        if in_logodds:
+            subject_conn = transform.to_logodds(subject_conn)
+
+        average_connectivity += subject_conn
 
     average_connectivity /= nbr_matrices
+
+    if in_logodds:
+        average_connectivity = transform.from_logodds(average_connectivity)
 
     cifti_utils.save_cifti(outfile,
                            average_connectivity[None, None, None, None, ...],
