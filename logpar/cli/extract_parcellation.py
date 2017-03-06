@@ -35,10 +35,9 @@ def extract_parcellation(dendrogram_file, nparcels, outfile):
     dendrogram, xml_structures = dendrogram_utils.load(dendrogram_file)
 
     heights = sorted(numpy.unique(dendrogram[:, 2]))
-    #print len(heights), 2-nparcels
     # If WARD was used, there's a direct mapping between the number of
     # parcels and the position of the height in the tree
-    #heights = heights[2-nparcels] + heights
+    heights = numpy.hstack(([heights[2-nparcels]], heights))
     logging.debug("len(heights): {}".format(len(heights)))
     for height in heights:
         parcellation = fcluster(dendrogram, height, criterion='distance')
@@ -52,7 +51,8 @@ def extract_parcellation(dendrogram_file, nparcels, outfile):
     if outfile.endswith('txt'):
         numpy.savetxt(outfile, parcellation, delimiter=',')
     else:
-        cifti_label_header = cifti_utils.label_header(xml_structures, nparcels)
+        cifti_label_header = cifti_utils.label_header(xml_structures,
+                                                      nparcels)
 
         cifti_utils.save_cifti(outfile,
                                parcellation[None, None, None, None, None, ...],

@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+''' Command Line Interface of cifti_average '''
+import argparse
+from logpar.cli.cifti_average import cifti_average
+
+
+if __name__ == "__main__":
+    # Parser
+    parser = argparse.ArgumentParser(description='Creates dendrogram')
+
+    parser.add_argument('-matrices', dest='matrices', required=True,
+                        nargs='+', type=str, help='Dendrogram')
+
+    parser.add_argument('-out', dest='outfile', type=str, required=True,
+                        help='file where to write the average matrix')
+
+    parser.add_argument('-in_logodds', action='store_true',
+                        help='If present, the average is computed in the\
+                              LogOdds space')
+
+    args = parser.parse_args()
+
+    cifti_average(args.matrices, args.outfile, args.in_logodds)
