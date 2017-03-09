@@ -2,7 +2,7 @@
 import nibabel
 import numpy
 
-from logpar.utils import other_utils, cifti_utils, transform
+from logpar.utils import cifti_header, cifti_utils, transform
 
 
 def check_input(matrix_files, outfile):
@@ -26,18 +26,18 @@ def cifti_average(matrix_files, outfile, in_logodds=False):
 
     # First, we retrieve the strucutures/indices that all the subjects
     # share for both directions
-    structures_manager = other_utils.CiftiMinimumCommonHeader()
-
+    
+    common_header = headers[0]
     for header in headers:
-        structures_manager.intersect_header(header)        
+        common_header = cifti_header.header_intersection(header, common_header)
 
-    sizeR, sizeC = structures_manager.get_matrix_size()
+    sizeR, sizeC = cifti_utils.matrix_size(common_header)
 
     average_connectivity = numpy.zeros((sizeR, sizeC), dtype=numpy.float32)
 
     matrices = [nibabel.load(mat) for mat in matrix_files] 
     for i, matrix in enumerate(matrices):
-        subject_conn = structures_manager.extract_common_struc(matrix)
+        subject_conn = cifti_utils.retrieve_common_data(common_header, matrix)
         if in_logodds:
             subject_conn = transform.to_logodds(subject_conn)
 
@@ -50,5 +50,5 @@ def cifti_average(matrix_files, outfile, in_logodds=False):
 
     cifti_utils.save_cifti(outfile,
                            average_connectivity[None, None, None, None, ...],
-                           header=structures_manager._header,
+                           header=common_header,
                            affine=matrices[0].affine)

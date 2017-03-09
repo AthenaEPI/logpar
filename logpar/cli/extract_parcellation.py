@@ -4,7 +4,7 @@ import logging
 import numpy
 from scipy.cluster.hierarchy import fcluster
 
-from ..utils import cifti_utils, dendrogram_utils
+from ..utils import cifti_utils, cifti_header, dendrogram_utils
 
 
 def check_input(outfile):
@@ -43,7 +43,6 @@ def extract_parcellation(dendrogram_file, nparcels, outfile):
         parcellation = fcluster(dendrogram, height, criterion='distance')
         parcellation_size = parcellation.max()
 
-        logging.debug('parcellation_size: {}'.format(parcellation_size))
         if parcellation_size == nparcels:
             break
 
@@ -51,8 +50,8 @@ def extract_parcellation(dendrogram_file, nparcels, outfile):
     if outfile.endswith('txt'):
         numpy.savetxt(outfile, parcellation, delimiter=',')
     else:
-        cifti_label_header = cifti_utils.label_header(xml_structures,
-                                                      nparcels)
+        cifti_label_header = cifti_header.create_label_header(xml_structures,
+                                                              nparcels)
 
         cifti_utils.save_cifti(outfile,
                                parcellation[None, None, None, None, None, ...],
