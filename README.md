@@ -2,6 +2,8 @@
 Groupwise Structural Parcellation of the Whole Cortex: A Logistic Random Effects Model Based Approach
 
 [![Build Status](https://travis-ci.org/AthenaEPI/logpar.svg?branch=master)](https://travis-ci.org/AthenaEPI/logpar)
+[![codecov](https://codecov.io/gh/AthenaEPI/logpar/branch/master/graph/badge.svg)](https://codecov.io/gh/AthenaEPI/logpar)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/e03fbe33404d42c68c0a7f5c567f43c4)](https://www.codacy.com/app/gagdiez-c/logpar?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=AthenaEPI/logpar&amp;utm_campaign=Badge_Grade)
 
 ### Installation
 - clone repository
