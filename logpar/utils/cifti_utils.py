@@ -9,7 +9,7 @@ from ..constrained_ahc import mat2cond_index
 
 
 def save_cifti(filename, data, header=None, affine=None, version=2):
-    ''' Wrapper around nibabel.save '''
+    ''' Simple wrapper around nibabel.save '''
     if version == 1:
         nif_image = nibabel.Nifti1Image(data, affine, header)
     else:
@@ -194,6 +194,68 @@ def principal_structure(gifti_obj):
     return cifti_nomenclature[structure.text]
 
 
+def matrix_size(header):
+    size = []
+    for dire in ['ROW', 'COLUMN']:
+        acum = 0
+
+        bmodels = extract_brainmodel(header, 'ALL', dire)
+        parcels = extract_parcel(header, 'ALL', dire)
+
+        acum += len(parcels)
+        acum += sum(int(b.attrib['IndexCount']) for b in bmodels)
+        size.append(acum)
+    return size
+
+
+def cifti_filter_indices(cifti, direction, structure, indices):
+    
+    offset, vertices = surface_attributes(cifti.header, structure,
+                                                      direction)
+    return pos_in_array(indices, vertices, offset)
+
+
+def cifti_filter_parcels(cifti, direction, parcels):
+
+    extracted = extract_parcel(cifti.header, 'ALL', direction)
+    extracted_names = numpy.array([p.attrib['Name'] for p in extracted])
+    
+    return pos_in_array(parcels, extracted_names, offset=0)
+
+
+def retrieve_common_data(header, cifti_matrix):
+    data = cifti_matrix.get_data()[0, 0, 0, 0]
+    common_data = numpy.zeros(matrix_size(header))
+    map_indices = {}
+    
+    for dire in ['ROW', 'COLUMN']:
+        parcels = extract_parcel(header, 'ALL', dire)
+        if parcels:
+            names = [p.attrib['Name'] for p in parcels]
+            map_indices[dire] = cifti_filter_parcels(cifti_matrix, 
+                                                     dire, names)
+            continue
+
+        bmodels = extract_brainmodel(header, 'ALL', dire)
+        itmp = []
+        for bmodel in bmodels:
+            bstr = bmodel.attrib['BrainStructure']
+            btype = bmodel.attrib['ModelType']
+            
+            if is_model_surf(btype):
+                _, indices = surface_attributes(header, bstr, dire)
+                itmp += cifti_filter_indices(cifti_matrix, dire,
+                                             bstr, indices).tolist()
+            else:
+                raise NotImplemented()
+
+        map_indices[dire] = numpy.ravel(itmp).astype(int)
+
+    common_data = data[map_indices['ROW'][:, None], map_indices['COLUMN']]
+
+    return common_data
+
+
 def constraint_from_surface(surface, vertices=None):
     ''' Retrieves the constraint matrix between vertices from a surface
 
@@ -238,75 +300,17 @@ def constraint_from_surface(surface, vertices=None):
 
     return neighbors
 
+# --- AUX ---
+def pos_in_array(arr1, arr2, offset):
+    ''' Returns in which position of arr2 is each element of arr1.
+        If the element is not found, returns the position -1 '''
+    pos_indice = numpy.zeros_like(arr1, dtype=int)
 
-def soft_colors_xml_label_map(nlabels):
-    ''' Returns an xml Element which represents a GiftiLabelTable
-        with soft colors
+    for i, elem in enumerate(arr1):
+        pos_in_arr2 = (arr2==elem).nonzero()[0]
+        if pos_in_arr2:
+            pos_indice[i] = pos_in_arr2 + offset
+        else:
+            pos_indice[i] = -1
+    return pos_indice
 
-        Parameters
-        ----------
-        nlabels: int
-            Number of colors to represent in the table
-
-        Returns
-        -------
-        xml Element
-            XML CIFTI LabelTable'''
-    named_map = xml.Element('NamedMap')
-    map_name = xml.SubElement(named_map, 'MapName')
-    map_name.text = 'Parcel'
-
-    label_table = xml.SubElement(named_map, 'LabelTable')
-    colors_path = os.path.dirname(os.path.abspath(__file__))
-    colors = numpy.loadtxt(os.path.join(colors_path, 'colors.txt'))
-    ncolors = len(colors)
-
-    background = xml.SubElement(label_table, 'Label',
-                                attrib={'Alpha':'0', 'Blue':'0', 'Red':'0',
-                                        'Green':'0', 'Key':'0'})
-    background.text = '???'
-
-    for key in range(1, nlabels+1):
-        red, green, blue = colors[(key-1)%ncolors]
-        if red == green and green == blue:
-            # remove this gray
-            red, blue = 0.7*red, 0.95*blue
-        label = xml.SubElement(label_table, 'Label',
-                               attrib={'Alpha':'1', 'Blue':str(blue),
-                                       'Red':str(red), 'Green':str(green),
-                                       'Key':str(key)})
-        label.text = str(key)
-    return named_map
-
-
-def label_header(xml_structures, nparcels):
-    ''' Creates a label header for different structures. Right now this is
-        a draft. TODO: Extend to work with many structures at the same time '''
-    cifti_extension = xml.Element('CIFTI', {'Version': '2'})
-
-    matrix = xml.SubElement(cifti_extension, 'Matrix')
-
-    LABELS = 'CIFTI_INDEX_TYPE_LABELS'
-    BRAIN_MODEL = 'CIFTI_INDEX_TYPE_BRAIN_MODELS'
-
-    # First dimention: LABEL
-    mat_indx_map_0 = xml.SubElement(matrix, 'MatrixIndicesMap',
-                                    {'AppliesToMatrixDimension': '0',
-                                     'IndicesMapToDataType': LABELS})
-
-    mat_indx_map_0.insert(0, soft_colors_xml_label_map(nparcels))
-
-    # Second dimention: what the columns represents.
-    mat_indx_map_1 = xml.SubElement(matrix, 'MatrixIndicesMap',
-                                    {'AppliesToMatrixDimension': '1',
-                                     'IndicesMapToDataType': BRAIN_MODEL})
-
-    for i, structure in enumerate(xml_structures):
-        mat_indx_map_1.insert(i, structure)
-
-    cifti_header = nibabel.nifti2.Nifti2Header()
-
-    cifti_header.extensions.append(
-        nibabel.nifti1.Nifti1Extension(32, xml.tostring(cifti_extension)))
-
-    return cifti_header
