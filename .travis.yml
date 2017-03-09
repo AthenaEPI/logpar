@@ -37,5 +37,5 @@ install:
 
 # command to run tests
 script: 
-    nosetests -v --with-coverage
-    codecov -t 292f41e6-b09f-4d16-b61b-2c4323e77a32
+    - nosetests -v --with-coverage
+    - codecov -t 292f41e6-b09f-4d16-b61b-2c4323e77a32
