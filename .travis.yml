@@ -9,16 +9,13 @@ cache:
   - $HOME/.cache/pip
   - $HOME/download
 
+env:
+    - NIBABEL=nibabel
+    - NIBABEL=git+https://github.com/nipy/nibabel
+
 python:
-    #  - "2.6"
     - "2.7"
-    #  - "3.2"
-    #  - "3.3"
-    #  - "3.4"
-    #  - "3.5"
-    #  - "3.5-dev" # 3.5 development branch
-    #  - "3.6-dev" # 3.6 development branch
-    #  - "nightly" # currently points to 3.7-dev
+    - "3.6"
 
 before_install:
   - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
@@ -33,6 +30,7 @@ install:
     - pip install -r requirements.txt
     - pip install nose
     - pip install codecov
+    - pip install $NIBABEL
     - python setup.py build_ext --inplace
 
 # command to run tests
