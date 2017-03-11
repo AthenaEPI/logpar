@@ -13,12 +13,12 @@ env:
     - NIBABEL=nibabel
     - NIBABEL=git+https://github.com/nipy/nibabel
 
-python:
-    - "2.7"
-    - "3.6"
+matrix:
+    - PYTHON_VERSION=2
+    - PYTHON_VERSION=3
 
 before_install:
-  - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
+  - wget http://repo.continuum.io/miniconda/Miniconda${PYTHON_VERSION}-latest-Linux-x86_64.sh -O miniconda.sh
   - chmod +x miniconda.sh
   - ./miniconda.sh -b
   - source $HOME/miniconda2/bin/activate root
@@ -26,7 +26,7 @@ before_install:
 
 # Install packages
 install:
-    - conda install --yes python=$TRAVIS_PYTHON_VERSION atlas numpy scipy
+    - conda install --yes atlas numpy scipy
     - pip install -r requirements.txt
     - pip install nose
     - pip install codecov
