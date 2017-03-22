@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+''' Command Line Interface of seeds_from_labeled_volume '''
+import argparse
+from logpar.cli import seeds_from_labeled_volume
+
+
+if __name__ == "__main__":
+    # Parser
+    parser = argparse.ArgumentParser(description='Seeds creator')
+
+    parser.add_argument('-vol', dest='volume_file', required=True, type=str,
+                        help='Labeled volume from where to extract the seeds')
+
+    parser.add_argument('-labels', dest='labels_file', type=str, required=True,
+                        help='File with the labels to use and their respective\
+                              structure')
+
+    parser.add_argument('-seeds_per_voxel', dest='seeds_per_voxel', type=int,
+                        required=True, help='Number of seeds per voxel')
+
+    parser.add_argument('-mask', dest='mask_file', type=str,
+                        help='If present, the labels will be expanded in the\
+                              mask. Then, both expanded and not expanded\
+                              labels will be used as seeds')
+
+    parser.add_argument('-mm', dest='mm', type=float,
+                        help='How many mm to expand the labels in the mask')
+
+    parser.add_argument('-out', dest='outfile', required=True, type=str,
+                        help='Text file with the position of each seed')
+
+    args = parser.parse_args()
+
+    seeds_from_labeled_volume(args.volume_file, args.labels_file,
+                              args.seeds_per_voxel, args.mask_file,
+                              args.mm, args.outfile)

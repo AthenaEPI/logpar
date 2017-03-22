@@ -8,6 +8,40 @@ import nibabel
 from ..constrained_ahc import mat2cond_index
 
 
+CIFTI_STRUCTURES = ["CIFTI_STRUCTURE_ACCUMBENS_LEFT",
+                    "CIFTI_STRUCTURE_ACCUMBENS_RIGHT",
+                    "CIFTI_STRUCTURE_ALL_WHITE_MATTER",
+                    "CIFTI_STRUCTURE_ALL_GREY_MATTER",
+                    "CIFTI_STRUCTURE_AMYGDALA_LEFT",
+                    "CIFTI_STRUCTURE_AMYGDALA_RIGHT",
+                    "CIFTI_STRUCTURE_BRAIN_STEM",
+                    "CIFTI_STRUCTURE_CAUDATE_LEFT",
+                    "CIFTI_STRUCTURE_CAUDATE_RIGHT",
+                    "CIFTI_STRUCTURE_CEREBELLAR_WHITE_MATTER_LEFT",
+                    "CIFTI_STRUCTURE_CEREBELLAR_WHITE_MATTER_RIGHT",
+                    "CIFTI_STRUCTURE_CEREBELLUM",
+                    "CIFTI_STRUCTURE_CEREBELLUM_LEFT",
+                    "CIFTI_STRUCTURE_CEREBELLUM_RIGHT",
+                    "CIFTI_STRUCTURE_CEREBRAL_WHITE_MATTER_LEFT",
+                    "CIFTI_STRUCTURE_CEREBRAL_WHITE_MATTER_RIGHT",
+                    "CIFTI_STRUCTURE_CORTEX",
+                    "CIFTI_STRUCTURE_CORTEX_LEFT",
+                    "CIFTI_STRUCTURE_CORTEX_RIGHT",
+                    "CIFTI_STRUCTURE_DIENCEPHALON_VENTRAL_LEFT",
+                    "CIFTI_STRUCTURE_DIENCEPHALON_VENTRAL_RIGHT",
+                    "CIFTI_STRUCTURE_HIPPOCAMPUS_LEFT",
+                    "CIFTI_STRUCTURE_HIPPOCAMPUS_RIGHT",
+                    "CIFTI_STRUCTURE_OTHER",
+                    "CIFTI_STRUCTURE_OTHER_GREY_MATTER",
+                    "CIFTI_STRUCTURE_OTHER_WHITE_MATTER",
+                    "CIFTI_STRUCTURE_PALLIDUM_LEFT",
+                    "CIFTI_STRUCTURE_PALLIDUM_RIGHT",
+                    "CIFTI_STRUCTURE_PUTAMEN_LEFT",
+                    "CIFTI_STRUCTURE_PUTAMEN_RIGHT",
+                    "CIFTI_STRUCTURE_THALAMUS_LEFT",
+                    "CIFTI_STRUCTURE_THALAMUS_RIGHT"]
+
+
 def save_cifti(filename, data, header=None, affine=None, version=2):
     ''' Simple wrapper around nibabel.save '''
     if version == 1:
