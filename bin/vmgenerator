@@ -1,0 +1,48 @@
+#!/usr/bin/env python
+''' Command Line Interface for vmgenerator '''
+import argparse
+from logpar.cli.vmgenerator import vmgenerator
+
+if __name__ == "__main__":
+
+    # Parser
+    parser = argparse.ArgumentParser(description="Visits' map generator")
+
+    parser.add_argument('-dmri', dest='dmri', required=True, type=str,
+                        help='dMRI image')
+
+    parser.add_argument('-bvals', dest='bvals', required=True, type=str,
+                        help='bvals file')
+
+    parser.add_argument('-bvecs', dest='bvecs', required=True, type=str,
+                        help='bvecs file')
+
+    parser.add_argument('-mask', dest='mask', required=True, type=str,
+                        help='mask')
+
+    parser.add_argument('-seeds', dest='seeds', type=str,
+                        help='txt file with seeds in mm space or volume file')
+
+    parser.add_argument('-npar', dest='particles', type=int,
+                        default=5000, help='number of particles to simulate')
+
+    parser.add_argument('-step', dest='step', type=float,
+                        default=0.5, help='step size')
+
+    parser.add_argument('-maxlength', dest='maxlen', type=float,
+                        default=200, help='maximum length of streamlines')
+
+    parser.add_argument('-proc', dest='npp', type=int,
+                        default=0, help='Number of proccesses to use')
+
+    parser.add_argument('-spp', dest='spp', type=float,
+                        default=5*10**5, help='Number of streamlines to \
+                                               create per process')
+    parser.add_argument('-outdir', dest='outdir', required=True, type=str,
+                        help='outfile with streamlines in TRK format')
+
+    args = parser.parse_args()
+
+    vmgenerator(args.dmri, args.bvals, args.bvecs, args.mask, args.seeds,
+                args.particles, args.npp, args.spp, args.step, args.maxlen,
+                args.outdir)
