@@ -32,8 +32,12 @@ if __name__ == "__main__":
     parser.add_argument('-vox', dest='vox', type=int, default=0,
                         help='How many mm to expand the labels in the mask')
 
+    parser.add_argument('-vol_out', dest='vol_out', type=str,
+                        help="Labeled volume with seeds' positions")
+
     args = parser.parse_args()
 
     seeds_from_labeled_volume(args.labeled_volume_file, args.labels_file,
-                              args.seeds_per_voxel, args.mask_file,
-                              args.outfile, args.vox, args.style)
+                              args.seeds_per_voxel, args.outfile,
+                              args.mask_file, args.vox, args.style,
+                              args.vol_out)

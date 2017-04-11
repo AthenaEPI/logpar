@@ -1,31 +1,35 @@
-def cols_from_csv(filename, cols=None, as_type=str):
-    ''' Expects a csv file which first two lines are header '''
-    with open(filename) as csv:
-        csv.readline()
-        csv.readline()
-        divided = [line.split(' ') for line in csv]
-    if cols:
-        points = [[as_type(d[i]) for i in cols] for d in divided if len(d)>1]
-    else:
-        points = [map(as_type, d) for d in divided if len(d)>1]
-    return points
+import numpy
 
 
-def starting_points(seeds_file):
+def load_seeds(seeds_file):
     ''' Returns starting points grouped by seeds '''
-    starting_pnts = cols_from_csv(seeds_file)
+    cifti_info = []
+    seeds_pnts = []
+    with open(seeds_file) as f:
+        f.readline()
+        
+        for line in f:
+            splitted = line.split()
+            
+            model_type = splitted[0]
+            brain_structure = splitted[1]
 
-    grouped_points = []
+            if model_type == 'CIFTI_MODEL_TYPE_VOXELS':
+                coord = splitted[2:5]
+                size = None
+                seeds = splitted[5:]
+            else:
+                coord = splitted[2]
+                size = splitted[3]
+                seeds = splitted[4:]
 
-    px, py, pz, pstruct, pvi, pvj, pvk = starting_pnts[0]
-    pt_group = [tuple(map(float, [px,py,pz]))]
-    for px, py, pz, struct, vi, vj, vk in starting_pnts[1:]:
-        if struct == pstruct and  (vi, vj, vk) == (pvi, pvj, pvk):
-            pt_group.append(tuple(map(float, [px,py,pz])))
-        else:
-            grouped_points.append(pt_group)
-            pt_group = [tuple(map(float, [px,py,pz]))]
-            pstruct, pvi, pvj, pvk = struct, vi, vj, vk
-    grouped_points.append(pt_group)  # Append final group
-    return grouped_points
+            seeds = numpy.array(map(float, seeds))
+            seeds.resize((len(seeds)/3, 3))
+            cifti_info.append((model_type, brain_structure, coord, size))
+            seeds_pnts.append(seeds)
 
+    return cifti_info, seeds_pnts
+
+
+def save_seeds(args, seeds_file):
+    raise NotImplemented()

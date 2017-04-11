@@ -1,0 +1,32 @@
+#!/usr/bin/env python
+''' Wrapper around nilearn.image.resample_to_image
+    nilearn: http://nilearn.github.io/ '''
+import argparse
+import nibabel
+import nilearn.image
+
+if __name__ == "__main__":
+    # Parser
+    parser = argparse.ArgumentParser(description='Resamples one image to another')
+
+    parser.add_argument('-original', dest='original', required=True,
+                        type=str, help='Image to resize')
+
+    parser.add_argument('-reference', dest='reference', required=True,
+                        type=str, help='Image with the desired shape')
+
+    parser.add_argument('-interpolation', dest='interpolation', 
+                        default='continuous', type=str,
+                        help='Interpolation: continuous (default) or nearest')
+
+    parser.add_argument('-out', dest='outfile', type=str, required=True,
+                        help='Output file: resampled original')
+
+    args = parser.parse_args()
+
+    original = nibabel.load(args.original)
+    reference = nibabel.load(args.reference)
+
+    resampled = nilearn.image.resample_to_img(original, reference,
+                                              interpolation=args.interpolation)
+    nibabel.save(resampled, args.outfile)

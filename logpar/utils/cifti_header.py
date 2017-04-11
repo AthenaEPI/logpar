@@ -141,3 +141,69 @@ def create_label_header(xml_structures, nparcels):
         nibabel.nifti1.Nifti1Extension(32, xml.tostring(cifti_extension)))
 
     return cifti_header
+
+
+def create_conn_header(row_structures, col_structures, dimention=None,
+                       affine=None):
+    ''' Creates the header for a dconn matrix '''
+    affine = " ".join(map(str, affine.reshape(-1)))
+    dimention = ",".join(map(str, dimention[:3]))
+
+    cifti_extension = xml.Element('CIFTI', {'Version': '2'})
+
+    matrix = xml.SubElement(cifti_extension, 'Matrix')
+
+    BRAIN_MODEL = 'CIFTI_INDEX_TYPE_BRAIN_MODELS'
+
+    # First dimention: ROW
+    mat_indx_map_0 = xml.SubElement(matrix, 'MatrixIndicesMap',
+                                    {'AppliesToMatrixDimension': '0',
+                                     'IndicesMapToDataType': BRAIN_MODEL})
+    volume = xml.SubElement(mat_indx_map_0, 'Volume',
+                            {'VolumeDimensions':dimention})
+    transform = xml.SubElement(volume,
+                               'TransformationMatrixVoxelIndicesIJKtoXYZ',
+                               {'MeterExponent':'-3'})
+    transform.text = affine
+
+    for i, structure in enumerate(row_structures):
+        mat_indx_map_0.insert(i, structure)
+
+    # Second dimention: what the columns represents.
+    mat_indx_map_1 = xml.SubElement(matrix, 'MatrixIndicesMap',
+                                    {'AppliesToMatrixDimension': '1',
+                                     'IndicesMapToDataType': BRAIN_MODEL})
+
+    volume = xml.SubElement(mat_indx_map_1, 'Volume',
+                            {'VolumeDimensions':dimention})
+    transform = xml.SubElement(volume,
+                               'TransformationMatrixVoxelIndicesIJKtoXYZ',
+                               {'MeterExponent':'-3'})
+    transform.text = affine
+
+    for i, structure in enumerate(col_structures):
+        mat_indx_map_1.insert(i, structure)
+
+    cifti_header = nibabel.nifti2.Nifti2Header()
+
+    cifti_header.extensions.append(
+        nibabel.nifti1.Nifti1Extension(32, xml.tostring(cifti_extension)))
+
+    return cifti_header
+
+
+def brain_model_xml(mtype, name, coord, offset, size):
+    name, mtype, offset, size = map(str, [name, mtype, offset, size ])
+    brain_model = xml.Element('BrainModel', attrib={'IndexOffset':offset,
+                                                    'IndexCount':str(len(coord)),
+                                                    'ModelType':mtype,
+                                                    'BrainStructure':name})
+    if mtype == "CIFTI_MODEL_TYPE_VOXELS":
+        voxijk = xml.SubElement(brain_model, 'VoxelIndicesIJK')
+        voxijk.text = " ".join(["{} {} {}".format(x,y,z) for x, y, z in coord])
+    else:
+        brain_model.attributes['SurfaceNumberOfVertices'] = size
+        vertx = xml.SubElement(brain_model, 'VertexIndices')
+        vertx.text = " ".join(coord)
+
+    return brain_model

@@ -14,21 +14,29 @@ import os
 import multiprocessing
 import logging
 
-from logpar.utils import cifti_utils, seeds_utils, streamline_utils
+from logpar.utils import cifti_utils, cifti_header, seeds_utils, streamline_utils
 import dipy.tracking.utils as dipy_utils
 
-def streamline(particles, shm, mask, affine, step_size, maxlen,
-               outdir, zooms, shape, enum_seeds):
+def tractogram(particles, shm, mask, affine, step_size, maxlen,
+               outdir, wpid_seeds_info):
     ''' Function to run in parallel
 
         Params:
             particles: number of particles to simulate in each seed
             shm: SHM computed from the dwi file
-            gfa: GFA computed from the dwi file
+            mask: Mask were to perform tractography
             affine: Affine matrix of the dwi
             step_size: size in mm of each step in the tracking
             maxlen: maxlen of each streamline
-            seeds: list of points were to track from
+            outdir: Directory were to save tractograms
+            wpid_seeds_info: tuple which contains:
+                - wpid: The id of this worker
+                - seeds: One list for each seed with points to track from
+                - info: CIFTI information for each seed:
+                    -mtype: A valid CIFTI MODELTYPE
+                    -name: A valid CIFTI BRAINSTRUCTURE
+                    -coord: Voxel or vertex to which the seed makes reference
+                    -size: size of the CIFTI SURFACE (if applies)
         Returns:
             list of streamlines '''
     from dipy.tracking.local import BinaryTissueClassifier
@@ -36,7 +44,7 @@ def streamline(particles, shm, mask, affine, step_size, maxlen,
     from dipy.data import default_sphere
     from dipy.tracking.local import LocalTracking
     
-    wpid, seeds = enum_seeds
+    wpid, (seeds, cifti_info) = wpid_seeds_info
     print "Worker {} started".format(wpid)
 
     shm = cifti_utils.load_data(shm)
@@ -45,12 +53,15 @@ def streamline(particles, shm, mask, affine, step_size, maxlen,
                                                         sphere=default_sphere)
     classifier = BinaryTissueClassifier(mask)
 
-    streamlines = []
     percent = max(1, len(seeds)/5)
+    nzr_mask = mask.nonzero()
+    tract = numpy.zeros((len(seeds), len(nzr_mask[0])))
+    visit_map = numpy.zeros_like(mask, dtype=numpy.int16)
     for i, s in enumerate(seeds):
         if i % percent == 0:
             print("{}, {}/{} strm".format(wpid, i, len(seeds)))
         
+        # Repeat the seeds as long as needed
         repeated_seeds = itertools.cycle(s)
 
         res = LocalTracking(dir_get, classifier, repeated_seeds, affine,
@@ -58,16 +69,47 @@ def streamline(particles, shm, mask, affine, step_size, maxlen,
         it = res._generate_streamlines()  # This is way faster, just remember
                                           #  after to move them into mm space
                                           #  again.
-        streams = list(itertools.islice(it, particles))
-        streamlines += streams
+        visit_map *= 0
+        for streamline in itertools.islice(it, particles*len(s)):
+            if streamline != []:
+                positions = numpy.round(streamline).astype(numpy.int)
+                tpositions = tuple(positions.T)
+                visit_map[tpositions] += 1
+        tract[i] = visit_map[nzr_mask]
+    
+    # I have a image which represents the connectivity of each seed over a
+    # mask. Now I need to create the cifti header
+    pmtype, pname, coord, psize = cifti_info[0]
+    bm_coords = [coord]
+    col_structures = []
+    offset = 0
+    for mtype, name, coord, size in cifti_info[1:]:
+        if mtype == pmtype and name == pname:
+            bm_coords.append(coord)
+        else:
+            # Save previous structure
+            xml = cifti_header.brain_model_xml(pmtype, pname, bm_coords,
+                                               offset, psize)
+            col_structures.append(xml)
+            offset += len(bm_coords)
 
-    out_trk = os.path.join(outdir, '{}_strm.trk'.format(wpid))
+            bm_coords = [coord]
+            pmtype, pname, psize = mtype, name, size
+    xml = cifti_header.brain_model_xml(pmtype, pname, bm_coords,
+                                       offset, psize)
+    col_structures.append(xml)
 
-    print "Worker {} saving streamlines".format(wpid)
-    streamline_utils.save_stream(out_trk, streamlines, affine)
-
+    row_structures = [cifti_header.brain_model_xml(
+                        'CIFTI_MODEL_TYPE_VOXELS',
+                        'CIFTI_STRUCTURE_ALL_WHITE_MATTER',
+                        numpy.transpose(nzr_mask), 0, None)]
+    header = cifti_header.create_conn_header(row_structures, col_structures,
+                                             mask.shape, affine)
+    outfile = os.path.join(outdir, "tractogram_{}.dconn.nii".format(wpid))
+    cifti_utils.save_cifti(outfile, tract.T[None, None, None, None, :],
+                           header=header)
     print("Worker {} finished".format(wpid))
-    return out_trk
+    return
 
 
 def vmgenerator(dmri_file, bvals_file, bvecs_file, mask_file, seeds_file,
@@ -99,23 +141,22 @@ def vmgenerator(dmri_file, bvals_file, bvecs_file, mask_file, seeds_file,
     #Start multiprocessing environment
     if not nbr_process:
         nbr_process = multiprocessing.cpu_count()
-
-    start_pnts = seeds_utils.starting_points(seeds_file)
     
+    cifti_info, seeds_pnts = seeds_utils.load_seeds(seeds_file)
     s = 1000
-    chunks = [start_pnts[i:i+s] for i in xrange(0, len(start_pnts), s)]
-    info = "Working with {} chunks of {} seeds and {} particles".format(
-        len(chunks), len(chunks[0]), particles)
-    logging.debug(info)
+    seed_chunks = [seeds_pnts[i:i+s] for i in xrange(0, len(seeds_pnts), s)]
+    info_chunks = [cifti_info[i:i+s] for i in xrange(0, len(cifti_info), s)]
+
+    logging.debug("Chunks: {}, Seeds: {}, Particles: {}".format(
+        len(seed_chunks), len(seed_chunks[0]), particles))
 
     pool = multiprocessing.Pool(nbr_process)
 
-    zooms, shape = diffusion_img.header.get_zooms(), diffusion_img.shape[:3]
+    tractogram_ = partial(tractogram, particles, shm_file, mask_file,
+                           affine, step, maxlen, outdir)
 
-    streamlines_ = partial(streamline, particles, shm_file, mask_file, affine,
-                           step, maxlen, outdir, zooms, shape)
     logging.debug("Starting multiprocessing environment")
-    res_streamlines = pool.map(streamlines_, list(enumerate(chunks)))
-
+    res_streamlines = pool.map(tractogram_, list(enumerate(zip(seed_chunks,
+                                                               info_chunks))))
     pool.close()
     pool.join()

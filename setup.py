@@ -27,5 +27,5 @@ setup(name=package_name,
       packages=[package_name, cli_module, utils_module],
       scripts=['bin/cifti_parcellate', 'bin/extract_parcellation',
                'bin/cifti_average', 'bin/seeds_from_labeled_volume',
-               'bin/vmgenerator'],
+               'bin/vmgenerator', 'bin/resample_volume_nilearn'],
       zip_safe=False)

@@ -334,6 +334,7 @@ def constraint_from_surface(surface, vertices=None):
 
     return neighbors
 
+
 # --- AUX ---
 def pos_in_array(arr1, arr2, offset):
     ''' Returns in which position of arr2 is each element of arr1.
@@ -347,4 +348,3 @@ def pos_in_array(arr1, arr2, offset):
         else:
             pos_indice[i] = -1
     return pos_indice
-
