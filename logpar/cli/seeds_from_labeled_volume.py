@@ -20,8 +20,8 @@ def read_labels_file(labels_file):
             label, struc = line.split()[:2]
             label = int(label)
 
-            if struc not in valid_cifti_structures:
-                print("{} is not a valid CIFTI structure".format(struc))
+            #if struc not in valid_cifti_structures:
+            #    print("{} is not a valid CIFTI structure".format(struc))
             label2structure[label] = struc
 
     return label2structure
@@ -97,4 +97,6 @@ def seeds_from_labeled_volume(labeled_volume_file, labels_file,
         f.write(text)
     # Save just for visual confirmation
     if vol_out:
-        cifti_utils.save_cifti(vol_out, seed_volume, version=1)
+        cifti_utils.save_cifti(vol_out, seed_volume,
+                               header=labels_nifti.header,
+                               affine=labels_nifti.affine, version=1)

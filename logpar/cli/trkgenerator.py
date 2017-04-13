@@ -14,10 +14,10 @@ import os
 import multiprocessing
 import logging
 
-from logpar.utils import cifti_utils, cifti_header, seeds_utils, streamline_utils
+from logpar.utils import cifti_utils, seeds_utils, streamline_utils
 import dipy.tracking.utils as dipy_utils
 
-def tractogram(particles, shm, mask, affine, step_size, maxlen, algo,
+def streamline(particles, shm, mask, affine, step_size, maxlen, algo,
                outdir, wpid_seeds_info):
     ''' Function to run in parallel
 
@@ -42,20 +42,17 @@ def tractogram(particles, shm, mask, affine, step_size, maxlen, algo,
             list of streamlines '''
     from dipy.tracking.local import BinaryTissueClassifier
     from dipy.tracking.local import LocalTracking
-    
+
     wpid, (seeds, cifti_info) = wpid_seeds_info
     print "Worker {} started".format(wpid)
 
     shm = cifti_utils.load_data(shm)
     mask = cifti_utils.load_data(mask)
-
     dir_get = streamline_utils.direction_getter(shm, max_angle=30, algo=algo)
     classifier = BinaryTissueClassifier(mask)
 
     percent = max(1, len(seeds)/5)
-    nzr_mask = mask.nonzero()
-    tract = numpy.zeros((len(seeds), len(nzr_mask[0])))
-    visit_map = numpy.zeros_like(mask, dtype=numpy.int16)
+    streamlines = []
     for i, s in enumerate(seeds):
         if i % percent == 0:
             print("{}, {}/{} strm".format(wpid, i, len(seeds)))
@@ -68,52 +65,21 @@ def tractogram(particles, shm, mask, affine, step_size, maxlen, algo,
         it = res._generate_streamlines()  # This is way faster, just remember
                                           #  after to move them into mm space
                                           #  again.
-        visit_map *= 0
         for streamline in itertools.islice(it, particles*len(s)):
             if streamline != []:
-                positions = numpy.round(streamline).astype(int)
-                posx, posy, posz = positions.T
-                visit_map[posx, posy, posz] += 1
-        tract[i] = visit_map[nzr_mask]
+                streamlines.append(streamline)
 
+    outfile = os.path.join(outdir, "stream_{}.trk".format(wpid))
+    streamline_utils.save_stream(outfile, streamlines, affine)
     # I have a image which represents the connectivity of each seed over a
     # mask. Now I need to create the cifti header
-    pmtype, pname, coord, psize = cifti_info[0]
-    bm_coords = [coord]
-    col_structures = []
-    offset = 0
-    for mtype, name, coord, size in cifti_info[1:]:
-        if mtype == pmtype and name == pname:
-            bm_coords.append(coord)
-        else:
-            # Save previous structure
-            xml = cifti_header.brain_model_xml(pmtype, pname, bm_coords,
-                                               offset, psize)
-            col_structures.append(xml)
-            offset += len(bm_coords)
-
-            bm_coords = [coord]
-            pmtype, pname, psize = mtype, name, size
-    xml = cifti_header.brain_model_xml(pmtype, pname, bm_coords,
-                                       offset, psize)
-    col_structures.append(xml)
-
-    row_structures = [cifti_header.brain_model_xml(
-                        'CIFTI_MODEL_TYPE_VOXELS',
-                        'CIFTI_STRUCTURE_ALL_WHITE_MATTER',
-                        numpy.transpose(nzr_mask), 0, None)]
-    header = cifti_header.create_conn_header(row_structures, col_structures,
-                                             mask.shape, affine)
-    outfile = os.path.join(outdir, "tractogram_{}.dconn.nii".format(wpid))
-    cifti_utils.save_cifti(outfile, tract.T[None, None, None, None, :],
-                           header=header)
     print("Worker {} finished".format(wpid))
     return
 
 
-def vmgenerator(dmri_file, bvals_file, bvecs_file, mask_file, seeds_file,
-                algorithm, particles, nbr_process, spp, step, maxlen, outdir,
-                verbose=1):
+def trkgenerator(dmri_file, bvals_file, bvecs_file, mask_file, seeds_file,
+                 algorithm, particles, nbr_process, spp, step, maxlen, outdir,
+                 verbose=1):
     if verbose:
         logging.basicConfig(level=logging.DEBUG)
 
@@ -152,11 +118,11 @@ def vmgenerator(dmri_file, bvals_file, bvecs_file, mask_file, seeds_file,
 
     pool = multiprocessing.Pool(nbr_process)
 
-    tractogram_ = partial(tractogram, particles, shm_file, mask_file,
+    streamline_ = partial(streamline, particles, shm_file, mask_file,
                            affine, step, maxlen, algorithm, outdir)
 
     logging.debug("Starting multiprocessing environment")
-    res_streamlines = pool.map(tractogram_, list(enumerate(zip(seed_chunks,
+    res_streamlines = pool.map(streamline_, list(enumerate(zip(seed_chunks,
                                                                info_chunks))))
     pool.close()
     pool.join()

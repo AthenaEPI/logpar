@@ -1,0 +1,26 @@
+#!/usr/bin/env python
+''' Command Line Interface for vmgenerator '''
+import argparse
+from logpar.cli.basic_hagmann import basic_hagmann
+
+if __name__ == "__main__":
+
+    # Parser
+    parser = argparse.ArgumentParser(description="Visits' map generator")
+
+    parser.add_argument('-stream', dest='streamlines', required=True, type=str,
+                        help='streamlines file')
+
+    parser.add_argument('-label_vol', dest='labeled_volume', required=True,
+                        type=str, help='Labeled volume')
+
+    parser.add_argument('-labels', dest='labels', required=True,
+                        type=str, help='Labels file')
+
+    parser.add_argument('-outfile', dest='outfile', required=True, type=str,
+                        help='outfile, csv format')
+
+    args = parser.parse_args()
+
+    basic_hagmann(args.streamlines, args.labeled_volume, args.labels,
+                  args.outfile)

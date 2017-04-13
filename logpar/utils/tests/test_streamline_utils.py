@@ -11,7 +11,6 @@ def test_save_and_load():
                           [  0,  0,1.3, 1],
                           [  0,  0,  0, 1]])
     
-    print streamlines
     output = NamedTemporaryFile(mode='w', delete=True, suffix='.trk').name
     streamline_utils.save_stream(output, streamlines, affine)
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 ''' Command Line Interface for vmgenerator '''
 import argparse
-from logpar.cli.vmgenerator import vmgenerator
+from logpar.cli.trkgenerator import trkgenerator
 
 if __name__ == "__main__":
 
@@ -46,6 +46,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    vmgenerator(args.dmri, args.bvals, args.bvecs, args.mask, args.seeds,
-                args.algorithm, args.particles, args.npp, args.spp, args.step,
-                args.maxlen, args.outdir)
+    trkgenerator(args.dmri, args.bvals, args.bvecs, args.mask, args.seeds,
+                 args.algorithm, args.particles, args.npp, args.spp, args.step,
+                 args.maxlen, args.outdir)
