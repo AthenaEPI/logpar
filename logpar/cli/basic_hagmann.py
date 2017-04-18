@@ -52,15 +52,14 @@ def basic_hagmann(streamlines_file, labeled_volume_file, labels_file, outfile):
     conn_matrix = numpy.zeros((nlabels, nlabels))
 
     r2M = {i: l for i, l in enumerate(ordered_labels)}
-    print r2M
-    print nlabels
+
     for i in xrange(nlabels):
         for j in xrange(i+1, nlabels):
             mi, mj = r2M[i], r2M[j]
             if mj < mi:
                 mi, mj = mj, mi  # requeriment for grouping indexing
             area_sum = areas[i] + areas[j]
-            len_sum = sum([1./streamline_utils.longitud(s, affine)
+            len_sum = sum([1./streamline_utils.nbr_visited_voxels(s, affine)
                            for s in grouping[mi, mj]])
             conn_matrix[j, i] = conn_matrix[i, j] = 2. * len_sum / area_sum
 

@@ -132,11 +132,11 @@ def vmgenerator(dmri_file, bvals_file, bvecs_file, mask_file, seeds_file,
     # Fit CSD model
     logging.debug("Fitting CSD model")
     response, ratio = auto_response(gtab, diffusion_data)
-    #csd_model = ConstrainedSphericalDeconvModel(gtab, response, sh_order=6)
-    #csd_fit = csd_model.fit(diffusion_data, mask=mask)
-    #shm = csd_fit.shm_coeff
+    csd_model = ConstrainedSphericalDeconvModel(gtab, response, sh_order=6)
+    csd_fit = csd_model.fit(diffusion_data, mask=mask)
+    shm = csd_fit.shm_coeff
     shm_file = os.path.join(outdir, 'shm.nii')
-    #cifti_utils.save_cifti(shm_file, shm)
+    cifti_utils.save_cifti(shm_file, shm)
 
     #Start multiprocessing environment
     if not nbr_process:
