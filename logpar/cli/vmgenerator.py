@@ -18,7 +18,7 @@ from logpar.utils import cifti_utils, cifti_header, seeds_utils, streamline_util
 import dipy.tracking.utils as dipy_utils
 
 def tractogram(particles, shm, mask, affine, step_size, maxlen, algo,
-               outdir, wpid_seeds_info):
+               outdir, save_stream, wpid_seeds_info):
     ''' Function to run in parallel
 
         Params:
@@ -30,6 +30,7 @@ def tractogram(particles, shm, mask, affine, step_size, maxlen, algo,
             maxlen: maxlen of each streamline
             algo: tract type: probabilistic or deterministic
             outdir: Directory were to save tractograms
+            save_stream: if True, streamlines are saved
             wpid_seeds_info: tuple which contains:
                 - wpid: The id of this worker
                 - seeds: One list for each seed with points to track from
@@ -42,7 +43,7 @@ def tractogram(particles, shm, mask, affine, step_size, maxlen, algo,
             list of streamlines '''
     from dipy.tracking.local import BinaryTissueClassifier
     from dipy.tracking.local import LocalTracking
-    
+
     wpid, (seeds, cifti_info) = wpid_seeds_info
     print "Worker {} started".format(wpid)
 
@@ -56,6 +57,8 @@ def tractogram(particles, shm, mask, affine, step_size, maxlen, algo,
     nzr_mask = mask.nonzero()
     tract = numpy.zeros((len(seeds), len(nzr_mask[0])))
     visit_map = numpy.zeros_like(mask, dtype=numpy.int16)
+    streamlines = []
+    used_seeds = []
     for i, s in enumerate(seeds):
         if i % percent == 0:
             print("{}, {}/{} strm".format(wpid, i, len(seeds)))
@@ -69,12 +72,24 @@ def tractogram(particles, shm, mask, affine, step_size, maxlen, algo,
                                           #  after to move them into mm space
                                           #  again.
         visit_map *= 0
+        created = False
         for streamline in itertools.islice(it, particles*len(s)):
-            if streamline != []:
+            if streamline is not None and len(streamline) > 1:
                 positions = numpy.round(streamline).astype(int)
                 posx, posy, posz = positions.T
                 visit_map[posx, posy, posz] += 1
+                created = True
+                if save_stream:
+                    streamlines.append(streamline)
+        if created:
+            used_seeds.append(map(int, cifti_info[i][2]))
         tract[i] = visit_map[nzr_mask]
+
+    if save_stream:
+        outinfo = os.path.join(outdir, "info_{}.trk".format(wpid))
+        numpy.savetxt(outinfo, used_seeds)
+        outfile = os.path.join(outdir, "stream_{}.trk".format(wpid))
+        streamline_utils.save_stream(outfile, streamlines, affine)
 
     # I have a image which represents the connectivity of each seed over a
     # mask. Now I need to create the cifti header
@@ -113,7 +128,7 @@ def tractogram(particles, shm, mask, affine, step_size, maxlen, algo,
 
 def vmgenerator(dmri_file, bvals_file, bvecs_file, mask_file, seeds_file,
                 algorithm, particles, nbr_process, spp, step, maxlen, outdir,
-                verbose=1):
+                save_stream=False, verbose=0):
     if verbose:
         logging.basicConfig(level=logging.DEBUG)
 
@@ -124,19 +139,19 @@ def vmgenerator(dmri_file, bvals_file, bvecs_file, mask_file, seeds_file,
     # Load diffusion and tractography mask
     diffusion_img = nibabel.load(dmri_file)
     diffusion_data = diffusion_img.get_data()
+    affine = diffusion_img.get_affine()
 
     mask_img = nibabel.load(mask_file)
     mask = mask_img.get_data().astype(bool)
-    affine = mask_img.get_affine()
 
     # Fit CSD model
     logging.debug("Fitting CSD model")
     response, ratio = auto_response(gtab, diffusion_data)
-    csd_model = ConstrainedSphericalDeconvModel(gtab, response, sh_order=6)
-    csd_fit = csd_model.fit(diffusion_data, mask=mask)
-    shm = csd_fit.shm_coeff
+    #csd_model = ConstrainedSphericalDeconvModel(gtab, response, sh_order=6)
+    #csd_fit = csd_model.fit(diffusion_data, mask=mask)
+    #shm = csd_fit.shm_coeff
     shm_file = os.path.join(outdir, 'shm.nii')
-    cifti_utils.save_cifti(shm_file, shm)
+    #cifti_utils.save_cifti(shm_file, shm)
 
     #Start multiprocessing environment
     if not nbr_process:
@@ -153,7 +168,8 @@ def vmgenerator(dmri_file, bvals_file, bvecs_file, mask_file, seeds_file,
     pool = multiprocessing.Pool(nbr_process)
 
     tractogram_ = partial(tractogram, particles, shm_file, mask_file,
-                           affine, step, maxlen, algorithm, outdir)
+                          affine, step, maxlen, algorithm, outdir,
+                          save_stream)
 
     logging.debug("Starting multiprocessing environment")
     res_streamlines = pool.map(tractogram_, list(enumerate(zip(seed_chunks,

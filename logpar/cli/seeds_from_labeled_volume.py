@@ -38,12 +38,12 @@ def seeds_from_labeled_volume(labeled_volume_file, labels_file,
 
     # Load volume with labels
     labels_nifti = nibabel.load(labeled_volume_file)
-    labels_volume = labels_nifti.get_data()
+    labels_volume = labels_nifti.get_data().astype(bool)
     labels_affine = labels_nifti.affine
 
     # Load mask if any
     if mask_file:
-        mask = nibabel.load(mask_file).get_data()
+        mask = nibabel.load(mask_file).get_data().astype(bool)
     else:
         mask = None
 

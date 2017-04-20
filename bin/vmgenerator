@@ -42,10 +42,16 @@ if __name__ == "__main__":
                         default=5*10**5, help='Number of streamlines to \
                                                create per process')
     parser.add_argument('-outdir', dest='outdir', required=True, type=str,
-                        help='outfile with streamlines in TRK format')
+                        help='outfile where to save tractograms')
+
+    parser.add_argument('-savetrk', action='store_true',
+                        help='if present, streamlines are also saved')
+
+    parser.add_argument('-verbose', action='store_true',
+                        help='verbose flag')
 
     args = parser.parse_args()
 
     vmgenerator(args.dmri, args.bvals, args.bvecs, args.mask, args.seeds,
                 args.algorithm, args.particles, args.npp, args.spp, args.step,
-                args.maxlen, args.outdir)
+                args.maxlen, args.outdir, args.savetrk, args.verbose)
