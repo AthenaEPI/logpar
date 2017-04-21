@@ -38,7 +38,7 @@ def seeds_from_labeled_volume(labeled_volume_file, labels_file,
 
     # Load volume with labels
     labels_nifti = nibabel.load(labeled_volume_file)
-    labels_volume = labels_nifti.get_data().astype(bool)
+    labels_volume = labels_nifti.get_data()
     labels_affine = labels_nifti.affine
 
     # Load mask if any
@@ -55,6 +55,7 @@ def seeds_from_labeled_volume(labeled_volume_file, labels_file,
     # Create seeds from voxels
     seed_volume = numpy.zeros_like(labels_volume)  # Visual confirmation
     text = ""
+
     for label in label2structure:
         logging.debug('Procesing label: {}'.format(label))
         label_mask = labels_volume==label

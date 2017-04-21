@@ -13,7 +13,7 @@ def test_one_random_seed():
     ''' Tests that the created seeds are inside the desired mask '''
     labeled_volume = numpy.zeros((10, 10, 10))
     x, y, z = numpy.random.randint(0, 3, 3)
-    labeled_volume[x, y, z] = 1
+    labeled_volume[x, y, z] = 3
 
     affine = numpy.eye(4)
 
@@ -23,7 +23,7 @@ def test_one_random_seed():
 
     labelsfile = NamedTemporaryFile(mode='w', delete=True, suffix='.txt').name
     with open(labelsfile, 'w') as f:
-        f.write('1 test1')
+        f.write('3 test1')
 
     outfile = NamedTemporaryFile(mode='w', delete=True, suffix='.csv').name
 
