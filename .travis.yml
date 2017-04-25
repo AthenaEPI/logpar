@@ -28,7 +28,7 @@ before_install:
 
 # Install packages
 install:
-    - conda install --yes python=$TRAVIS_PYTHON_VERSION atlas numpy scipy
+    - conda install --yes python=$TRAVIS_PYTHON_VERSION atlas numpy scipy pandas
     - pip install -r requirements.txt
     - pip install nose
     - pip install codecov
