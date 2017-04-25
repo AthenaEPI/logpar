@@ -11,7 +11,6 @@ cache:
 
 env:
     - NIBABEL=nibabel
-    - NIBABEL=git+https://github.com/nipy/nibabel
 
 python:
     - "2.7"

@@ -1,21 +1,20 @@
 ''' Given a set of seeds, computes streamlines for each seeds and returns
     a visits' map over a mask '''
+import itertools
+import logging
+import multiprocessing
+import os
+
+from functools import partial
+
+import nibabel
 from dipy.io import read_bvals_bvecs
-from dipy.reconst.shm import CsaOdfModel
 from dipy.core.gradients import gradient_table
 from dipy.reconst.csdeconv import auto_response
 from dipy.reconst.csdeconv import ConstrainedSphericalDeconvModel
 
-import nibabel
-import numpy
-import itertools
-from functools import partial
-import os
-import multiprocessing
-import logging
-
 from logpar.utils import cifti_utils, seeds_utils, streamline_utils
-import dipy.tracking.utils as dipy_utils
+
 
 def streamline(particles, shm, mask, affine, step_size, maxlen, algo,
                outdir, wpid_seeds_info):
@@ -53,6 +52,7 @@ def streamline(particles, shm, mask, affine, step_size, maxlen, algo,
 
     percent = max(1, len(seeds)/5)
     streamlines = []
+    stream_per_seed = []
     for i, s in enumerate(seeds):
         if i % percent == 0:
             print("{}, {}/{} strm".format(wpid, i, len(seeds)))
@@ -62,17 +62,26 @@ def streamline(particles, shm, mask, affine, step_size, maxlen, algo,
 
         res = LocalTracking(dir_get, classifier, repeated_seeds, affine,
                             step_size=step_size, maxlen=maxlen)
-        it = res._generate_streamlines()  # This is way faster, just remember
-                                          #  after to move them into mm space
-                                          #  again.
+        it = res._generate_streamlines() # This is way faster, just remember
+                                         # after to move them into mm space
+                                         # again.
+        amount = 0
         for streamline in itertools.islice(it, particles*len(s)):
             if streamline != []:
                 streamlines.append(streamline)
-
+                amount += 1
+        stream_per_seed.append((cifti_info[i][2], amount))
+    
+    # Save streamlines
     outfile = os.path.join(outdir, "stream_{}.trk".format(wpid))
     streamline_utils.save_stream(outfile, streamlines, affine)
-    # I have a image which represents the connectivity of each seed over a
-    # mask. Now I need to create the cifti header
+    
+    # Save streamlines' origin and amount
+    outinfo = os.path.join(outdir, "info_{}.txt".format(wpid))
+    with open(outinfo, 'w') as f:
+        for [i, j, k], a in stream_per_seed:
+            f.write("{} {} {} {}\n".format(i, j, k, a))
+
     print("Worker {} finished".format(wpid))
     return
 
@@ -90,10 +99,10 @@ def trkgenerator(dmri_file, bvals_file, bvecs_file, mask_file, seeds_file,
     # Load diffusion and tractography mask
     diffusion_img = nibabel.load(dmri_file)
     diffusion_data = diffusion_img.get_data()
+    affine = diffusion_img.affine
 
     mask_img = nibabel.load(mask_file)
     mask = mask_img.get_data().astype(bool)
-    affine = mask_img.get_affine()
 
     # Fit CSD model
     logging.debug("Fitting CSD model")
