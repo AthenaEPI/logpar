@@ -1,5 +1,4 @@
 ''' Utils to manipulate CIFTI files '''
-import os
 import xml.etree.ElementTree as xml
 
 import numpy
@@ -42,7 +41,7 @@ CIFTI_STRUCTURES = ["CIFTI_STRUCTURE_ACCUMBENS_LEFT",
                     "CIFTI_STRUCTURE_THALAMUS_RIGHT"]
 
 
-def save_cifti(filename, data, header=None, affine=None, version=2):
+def save_nifti(filename, data, header=None, affine=None, version=2):
     ''' Simple wrapper around nibabel.save '''
     if version == 1:
         nif_image = nibabel.Nifti1Image(data, affine, header)
@@ -61,8 +60,8 @@ def is_model_surf(model):
 
 
 def text2voxels(text):
-    voxels = text.split()
-    indices = numpy.reshape(voxels, (len(voxels)/3, 3))
+    vxs = map(int, text.split())
+    indices = [(vxs[i], vxs[i+1], vxs[i+2]) for i in xrange(0, len(vxs), 3)]
     return indices
 
 
@@ -71,11 +70,29 @@ def voxels2text(voxels):
 
 
 def text2indices(text):
-    return numpy.array(text.split(), dtype=int)
+    return map(int, text.split())
 
 
 def indices2text(indices):
     return " ".join(map(str, indices))
+
+
+def direction2dimention(direction):
+    return 0 if direction == 'ROW' else 1
+
+
+def modeltext2indices(text, model):
+    if model == 'CIFTI_MODEL_TYPE_VOXELS':
+        return text2voxels(text)
+    else:
+        return text2indices(text)
+
+
+def indices2modeltext(indices, model):
+    if model == 'CIFTI_MODEL_TYPE_VOXELS':
+        return voxels2text(indices)
+    else:
+        return indices2text(indices)
 
 
 def surface_attributes(cifti_header, surface, direction):
@@ -108,6 +125,50 @@ def surface_attributes(cifti_header, surface, direction):
     return offset, vertices
 
 
+def volume_attributes(cifti_header, direction):
+    ''' Retrieves the dimention and affine of the volume defined in a given
+        direction.
+
+        Parameters
+        ----------
+        cifti_header: cifti header
+            Header of the cifti file
+        direction: string
+            ROW or COLUMN
+
+        Returns
+        -------
+        dimention: array_like
+            a 3-d array representing the dimention of the volume
+        affine: array_like
+            affine matrix defined in the volume
+        '''
+    matrix_indices_map = extract_matrixIndicesMap(cifti_header, direction)
+    
+    volume = matrix_indices_map.find('.//Volume')
+    dimentions = map(int, volume.attrib['VolumeDimensions'].split(','))
+    affine = numpy.array(volume[0].text.split(), dtype=float).reshape((4,4))
+    
+    return dimentions, affine
+
+def extract_xml_header(cifti_header):
+    ''' Retrieves the xml header from the extension of a cifti header.
+
+       Parameters
+       ----------
+       cifti_header: cifti header
+           Header of the cifti file
+
+       Returns
+       -------
+       xml_entitie
+       Returns an xml (Elemtree) object
+    '''
+    cxml = xml.fromstring(cifti_header.extensions[0].get_content())
+
+    return cxml
+
+
 def extract_matrixIndicesMap(cifti_header, direction):
     ''' Retrieves the xml of a Matrix Indices Map from a cifti file.
 
@@ -123,9 +184,8 @@ def extract_matrixIndicesMap(cifti_header, direction):
        xml_entitie
        Returns an xml (Elemtree) object
     '''
-    dim = 0 if direction == 'ROW' else 1
-
-    cxml = xml.fromstring(cifti_header.extensions[0].get_content())
+    dim = direction2dimention(direction)
+    cxml = extract_xml_header(cifti_header)
 
     query = ".//MatrixIndicesMap[@AppliesToMatrixDimension='{}']".format(dim)
     matrix_indices_map = cxml.find(query)
@@ -243,30 +303,29 @@ def matrix_size(header):
 
 
 def cifti_filter_indices(cifti, direction, structure, indices):
-    
     offset, vertices = surface_attributes(cifti.header, structure,
                                                       direction)
     return pos_in_array(indices, vertices, offset)
 
 
 def cifti_filter_parcels(cifti, direction, parcels):
-
     extracted = extract_parcel(cifti.header, 'ALL', direction)
     extracted_names = numpy.array([p.attrib['Name'] for p in extracted])
-    
+
     return pos_in_array(parcels, extracted_names, offset=0)
 
 
 def retrieve_common_data(header, cifti_matrix):
+    ''' Retrieves data in cifti_matrix from the structures in header '''
     data = cifti_matrix.get_data()[0, 0, 0, 0]
     common_data = numpy.zeros(matrix_size(header))
     map_indices = {}
-    
+
     for dire in ['ROW', 'COLUMN']:
         parcels = extract_parcel(header, 'ALL', dire)
         if parcels:
             names = [p.attrib['Name'] for p in parcels]
-            map_indices[dire] = cifti_filter_parcels(cifti_matrix, 
+            map_indices[dire] = cifti_filter_parcels(cifti_matrix,
                                                      dire, names)
             continue
 
@@ -275,13 +334,13 @@ def retrieve_common_data(header, cifti_matrix):
         for bmodel in bmodels:
             bstr = bmodel.attrib['BrainStructure']
             btype = bmodel.attrib['ModelType']
-            
+
             if is_model_surf(btype):
                 _, indices = surface_attributes(header, bstr, dire)
                 itmp += cifti_filter_indices(cifti_matrix, dire,
                                              bstr, indices).tolist()
             else:
-                raise NotImplemented()
+                raise NotImplementedError()
 
         map_indices[dire] = numpy.ravel(itmp).astype(int)
 
@@ -342,7 +401,7 @@ def pos_in_array(arr1, arr2, offset):
     pos_indice = numpy.zeros_like(arr1, dtype=int)
 
     for i, elem in enumerate(arr1):
-        pos_in_arr2 = (arr2==elem).nonzero()[0]
+        pos_in_arr2 = (arr2 == elem).nonzero()[0]
         if pos_in_arr2:
             pos_indice[i] = pos_in_arr2 + offset
         else:

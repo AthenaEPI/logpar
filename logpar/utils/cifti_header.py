@@ -23,14 +23,14 @@ def header_intersection(header1, header2):
         idx = 0 if dire == 'ROW' else 1
         query = ".//MatrixIndicesMap[@AppliesToMatrixDimension='{}']".format(idx)
         mimap = xml_header.find(query)
-        
+
         # If this direction has labels, we keep only the labels present
         # in both headers
         parcels = mimap.findall('Parcels')
         for parcel in parcels:
             if parcel.attrib['Name'] not in new_parcels:
                 mimap.remove(parcel)  # Remove it
-        
+
         # If the direction has BrainModels, we keep only the BM present
         # in both headers. Moreover, we keep only the indices they share
         bmodels = mimap.findall('BrainModel')
@@ -43,7 +43,7 @@ def header_intersection(header1, header2):
 
             if cifti_utils.is_model_surf(btype):
                 # It's a surface, lets update its indices
-                _, new_vertices = cifti_utils.surface_attributes(header1, 
+                _, new_vertices = cifti_utils.surface_attributes(header1,
                                                                  bstr,
                                                                  dire)
                 _, vertices = cifti_utils.surface_attributes(header2,
@@ -54,8 +54,8 @@ def header_intersection(header1, header2):
                 bmodel.attrib['IndexCount'] = str(len(common))
             else:
                 # It's a volume, lets update its voxels
-                raise NotImplemented()
-        
+                raise NotImplementedError()
+
         # Finally, fix the attributes of each brain model
         offset = 0
         for bmodel in bmodels:
@@ -64,7 +64,7 @@ def header_intersection(header1, header2):
 
         new_xml_string = xml.tostring(xml_header)
         new_extension = nibabel.nifti1.Nifti1Extension(32, new_xml_string)
-        
+
         header2.extensions[0] = new_extension
 
         return header2
@@ -146,8 +146,9 @@ def create_label_header(xml_structures, nparcels):
 def create_conn_header(row_structures, col_structures, dimention=None,
                        affine=None):
     ''' Creates the header for a dconn matrix '''
-    affine = " ".join(map(str, affine.reshape(-1)))
-    dimention = ",".join(map(str, dimention[:3]))
+    if dimention is not None:
+        affine = " ".join(map(str, affine.reshape(-1)))
+        dimention = ",".join(map(str, dimention[:3]))
 
     cifti_extension = xml.Element('CIFTI', {'Version': '2'})
 
@@ -159,12 +160,13 @@ def create_conn_header(row_structures, col_structures, dimention=None,
     mat_indx_map_0 = xml.SubElement(matrix, 'MatrixIndicesMap',
                                     {'AppliesToMatrixDimension': '0',
                                      'IndicesMapToDataType': BRAIN_MODEL})
-    volume = xml.SubElement(mat_indx_map_0, 'Volume',
-                            {'VolumeDimensions':dimention})
-    transform = xml.SubElement(volume,
-                               'TransformationMatrixVoxelIndicesIJKtoXYZ',
-                               {'MeterExponent':'-3'})
-    transform.text = affine
+    if dimention is not None:
+        volume = xml.SubElement(mat_indx_map_0, 'Volume',
+                                {'VolumeDimensions':dimention})
+        transform = xml.SubElement(volume,
+                                   'TransformationMatrixVoxelIndicesIJKtoXYZ',
+                                   {'MeterExponent':'-3'})
+        transform.text = affine
 
     for i, structure in enumerate(row_structures):
         mat_indx_map_0.insert(i, structure)
@@ -173,13 +175,13 @@ def create_conn_header(row_structures, col_structures, dimention=None,
     mat_indx_map_1 = xml.SubElement(matrix, 'MatrixIndicesMap',
                                     {'AppliesToMatrixDimension': '1',
                                      'IndicesMapToDataType': BRAIN_MODEL})
-
-    volume = xml.SubElement(mat_indx_map_1, 'Volume',
-                            {'VolumeDimensions':dimention})
-    transform = xml.SubElement(volume,
-                               'TransformationMatrixVoxelIndicesIJKtoXYZ',
-                               {'MeterExponent':'-3'})
-    transform.text = affine
+    if dimention is not None:
+        volume = xml.SubElement(mat_indx_map_1, 'Volume',
+                                {'VolumeDimensions':dimention})
+        transform = xml.SubElement(volume,
+                                   'TransformationMatrixVoxelIndicesIJKtoXYZ',
+                                   {'MeterExponent':'-3'})
+        transform.text = affine
 
     for i, structure in enumerate(col_structures):
         mat_indx_map_1.insert(i, structure)
@@ -202,8 +204,53 @@ def brain_model_xml(mtype, name, coord, offset, size):
         voxijk = xml.SubElement(brain_model, 'VoxelIndicesIJK')
         voxijk.text = " ".join(["{} {} {}".format(x,y,z) for x, y, z in coord])
     else:
-        brain_model.attributes['SurfaceNumberOfVertices'] = size
+        brain_model.attrib['SurfaceNumberOfVertices'] = size
         vertx = xml.SubElement(brain_model, 'VertexIndices')
-        vertx.text = " ".join(coord)
+        vertx.text = " ".join(map(str, coord))
 
     return brain_model
+
+
+def change_brainmodel(in_xml_header, direction, mtype, name, new_mtype=None,
+                      new_name=None, new_coord=None, new_offset=None,
+                      new_size=None):
+    raise ValueError('Not tested, not sure useful')
+    dim = cifti_utils.direction2dimention(direction)
+
+    xml_header = xml.fromstring(xml.tostring(in_xml_header))
+
+    mquery = ".//MatrixIndicesMap[@AppliesToMatrixDimension='{}']"
+    bquery = "./BrainModel[@ModelType='{}'][@BrainStructure='{}']"
+    matrix_indices_map = xml_header.find(mquery.format(dim))
+    bm_list = matrix_indices_map.findall(bquery.format(mtype, name))
+
+    if bm_list == []:
+        raise ValueError('Structure not found in xml_header')
+
+    brainmodel = bm_list[0]
+
+    new_attrib = {'ModelType': new_mtype, 'BrainStructure': new_name,
+                  'IndexOffset': new_offset,
+                  'SurfaceNumberOfVertices': new_size}
+
+    for k, v in new_attrib.iteritems():
+        if k in brainmodel.attrib and v is None:
+            new_attrib[k] = brainmodel.attrib[k]
+
+    if new_coord is None:
+        if brainmodel.attrib['ModelType'] == 'CIFTI_MODEL_TYPE_VOXELS':
+            new_coord = cifti_utils.text2voxels(brainmodel[0].text)
+        else:
+            new_coord = cifti_utils.text2indices(brainmodel[0].text)
+
+    new_mtype = new_attrib['ModelType']
+    new_name = new_attrib['BrainStructure']
+    new_offset = new_attrib['IndexOffset']
+    new_size = new_attrib['SurfaceNumberOfVertices']
+
+    new_bm = brain_model_xml(new_mtype, new_name, new_coord, new_offset,
+                             new_size)
+    brainmodel.attrib = new_bm.attrib
+    brainmodel.text = new_bm.text
+
+    return xml_header

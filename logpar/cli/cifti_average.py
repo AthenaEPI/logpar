@@ -11,7 +11,7 @@ def check_input(matrix_files, outfile):
 
     if not all([name.split('.')[-2] == conn_type for name in matrix_files]):
         raise ValueError('All the input files MUST be of the same type')
-    
+
     if conn_type != outfile.split('.')[-2]:
         raise ValueError('The output file MUST be of the same type as inputs')
 
@@ -21,12 +21,11 @@ def cifti_average(matrix_files, outfile, in_logodds=False):
     check_input(matrix_files, outfile)
 
     nbr_matrices = len(matrix_files)
-    matrices = [nibabel.load(mat) for mat in matrix_files] 
+    matrices = [nibabel.load(mat) for mat in matrix_files]
     headers = [mat.header for mat in matrices]
 
     # First, we retrieve the strucutures/indices that all the subjects
     # share for both directions
-    
     common_header = headers[0]
     for header in headers:
         common_header = cifti_header.header_intersection(header, common_header)
@@ -48,7 +47,7 @@ def cifti_average(matrix_files, outfile, in_logodds=False):
     if in_logodds:
         average_connectivity = transform.from_logodds(average_connectivity)
 
-    cifti_utils.save_cifti(outfile,
+    cifti_utils.save_nifti(outfile,
                            average_connectivity[None, None, None, None, ...],
                            header=common_header,
                            affine=matrices[0].affine)
