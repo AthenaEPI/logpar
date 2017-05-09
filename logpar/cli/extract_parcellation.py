@@ -53,6 +53,6 @@ def extract_parcellation(dendrogram_file, nparcels, outfile):
         cifti_label_header = cifti_header.create_label_header(xml_structures,
                                                               nparcels)
 
-        cifti_utils.save_cifti(outfile,
+        cifti_utils.save_nifti(outfile,
                                parcellation[None, None, None, None, None, ...],
                                header=cifti_label_header)

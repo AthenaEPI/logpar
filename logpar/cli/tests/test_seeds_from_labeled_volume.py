@@ -19,7 +19,7 @@ def test_one_random_seed():
 
     # Save files
     labvolfile = NamedTemporaryFile(mode='w', delete=True, suffix='.nii').name
-    cifti_utils.save_cifti(labvolfile, labeled_volume, affine=numpy.eye(4))
+    cifti_utils.save_nifti(labvolfile, labeled_volume, affine=numpy.eye(4))
 
     labelsfile = NamedTemporaryFile(mode='w', delete=True, suffix='.txt').name
     with open(labelsfile, 'w') as f:
@@ -71,7 +71,7 @@ def test_one_random_seed_with_affine():
 
     # Save files
     labvolfile = NamedTemporaryFile(mode='w', delete=True, suffix='.nii').name
-    cifti_utils.save_cifti(labvolfile, labeled_volume, affine=affine)
+    cifti_utils.save_nifti(labvolfile, labeled_volume, affine=affine)
 
     labelsfile = NamedTemporaryFile(mode='w', delete=True, suffix='.txt').name
     with open(labelsfile, 'w') as f:
