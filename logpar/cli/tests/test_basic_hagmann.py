@@ -40,7 +40,7 @@ def test_basic_3d_volume():
     streamline_utils.save_stream(streamfile, strms)
 
     labvolfile = NamedTemporaryFile(mode='w', delete=True, suffix='.nii').name
-    cifti_utils.save_cifti(labvolfile, labeled_volume, affine=numpy.eye(4))
+    cifti_utils.save_nifti(labvolfile, labeled_volume, affine=numpy.eye(4))
 
     labelsfile = NamedTemporaryFile(mode='w', delete=True, suffix='.txt').name
     with open(labelsfile, 'w') as f:
