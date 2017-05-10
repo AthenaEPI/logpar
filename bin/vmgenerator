@@ -38,11 +38,12 @@ if __name__ == "__main__":
     parser.add_argument('-proc', dest='npp', type=int,
                         default=0, help='Number of proccesses to use')
 
+    parser.add_argument('-outdir', dest='outdir', required=True, type=str,
+                        help='outfile where to save tractograms')
+
     parser.add_argument('-spp', dest='spp', type=float,
                         default=5*10**5, help='Number of streamlines to \
                                                create per process')
-    parser.add_argument('-outdir', dest='outdir', required=True, type=str,
-                        help='outfile where to save tractograms')
 
     parser.add_argument('-savetrk', action='store_true',
                         help='if present, streamlines are also saved')
@@ -53,5 +54,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     vmgenerator(args.dmri, args.bvals, args.bvecs, args.mask, args.seeds,
-                args.algorithm, args.particles, args.npp, args.spp, args.step,
-                args.maxlen, args.outdir, args.savetrk, args.verbose)
+                args.algorithm, args.particles, args.npp, args.step,
+                args.maxlen, args.outdir, args.spp, args.savetrk, args.verbose)

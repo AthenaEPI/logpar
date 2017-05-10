@@ -7,19 +7,19 @@ def load_seeds(seeds_file):
     seeds_pnts = []
     with open(seeds_file) as f:
         f.readline()
-        
+
         for line in f:
             splitted = line.split()
-            
+
             model_type = splitted[0]
             brain_structure = splitted[1]
 
             if model_type == 'CIFTI_MODEL_TYPE_VOXELS':
-                coord = splitted[2:5]
+                coord = tuple(map(int, splitted[2:5]))
                 size = None
                 seeds = splitted[5:]
             else:
-                coord = splitted[2]
+                coord = int(splitted[2])
                 size = splitted[3]
                 seeds = splitted[4:]
 

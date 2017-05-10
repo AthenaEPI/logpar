@@ -46,7 +46,7 @@ def cifti_merge(matrix_files, direction, outfile):
     all_structures_meta = {}
     sidx2midx = {}
     for mat_idx, header in enumerate(headers):
-        xml_entities = cifti_utils.extract_brainmodel(header, 'ALL', direction)
+        xml_entities = cifti_utils.extract_brainmodel(header, direction)
         offset = 0
 
         for xml_entity in xml_entities:
@@ -110,21 +110,22 @@ def cifti_merge(matrix_files, direction, outfile):
     # Create header : we already have the xml_entities for rows of our
     #  merged_matrix, now we need the xml_entities for the columns
     oposite_dir = 'COLUMN' if direction == 'ROW' else 'ROW'
-    xml_cols = cifti_utils.extract_brainmodel(headers[0], 'ALL', oposite_dir)
+    xml_cols = cifti_utils.extract_brainmodel(headers[0], oposite_dir)
 
     # Save merged matrix: So far we forced the merge to happen in the 0 dim,
     # this simplifies the process of handling indices. Now we need to put the
     # matrix in the right order. This is, if the merge was supposed to happen
     # in the COLUMNS, then we need to transpose the matrix
-    dimention, affine = cifti_utils.volume_attributes(headers[0], direction)
+    rdim, raff = cifti_utils.volume_attributes(headers[0], 'ROW')
+    cdim, caff = cifti_utils.volume_attributes(headers[0], 'COLUMN')
 
     if direction == 'COLUMN':
         merged_matrix = merged_matrix.T
         merged_header = cifti_header.create_conn_header(xml_cols, xml_rows,
-                                                        dimention, affine)
+                                                        rdim, cdim, raff, caff)
     else:
         merged_header = cifti_header.create_conn_header(xml_rows, xml_cols,
-                                                        dimention, affine)
+                                                        rdim, cdim, raff, caff)
 
     cifti_utils.save_nifti(outfile, merged_matrix[None, None, None, None],
                            header=merged_header, affine=matrices[0].affine)

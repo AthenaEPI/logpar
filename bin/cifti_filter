@@ -1,0 +1,32 @@
+#!/usr/bin/env python
+''' Tool to filter column/rows of a cifti connectivity file '''
+import argparse
+from logpar.cli.cifti_filter import cifti_filter
+
+if __name__ == "__main__":
+
+    # Parser
+    parser = argparse.ArgumentParser(description='Tool to cluster a cifti \
+                                     connectivity file. ')
+
+    parser.add_argument('-cifti', dest='cifti', required=True, type=str,
+                        help='Connectivity matrix to filter')
+
+    parser.add_argument('-direction', dest='direction', type=str,
+                        default="COLUMN", required=True,
+                        help='Direction to filter: ROW or COLUMN')
+
+    parser.add_argument('-keep', dest='structures', required=True,
+                        type=str, help='Text file with the structures and \
+                                        indices to keep')
+
+    parser.add_argument('-out', dest='outfile', required=True,
+                        type=str, help='outfile to write the dendrogram as a\
+                                        csv file')
+
+    parser.add_argument('-verbose', dest='verbose', action='store_true')
+
+    args = parser.parse_args()
+
+    cifti_filter(args.cifti, args.structures, args.outfile, args.direction,
+                 args.verbose)

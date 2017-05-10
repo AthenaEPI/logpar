@@ -28,29 +28,35 @@ def test_surface_attributes():
 
     header = cifti_test.header
 
-    offset_l, indices_l = cifti_utils.surface_attributes(
-        header, 'CIFTI_STRUCTURE_CORTEX_LEFT', "ROW"
+    offset_l, indices_l = cifti_utils.offset_and_indices(
+        header, 'CIFTI_MODEL_TYPE_SURFACE', 'CIFTI_STRUCTURE_CORTEX_LEFT', "ROW"
     )
     assert(offset_l == 0)
     assert(len(indices_l) == 200)
 
-    offset_r, indices_r = cifti_utils.surface_attributes(
-        header, 'CIFTI_STRUCTURE_CORTEX_RIGHT', "ROW"
+    offset_r, indices_r = cifti_utils.offset_and_indices(
+        header, 'CIFTI_MODEL_TYPE_SURFACE', 'CIFTI_STRUCTURE_CORTEX_RIGHT', "ROW"
     )
     assert(offset_r == len(indices_l))
     assert(len(indices_r) == 400)
 
-    offset_l, indices_l = cifti_utils.surface_attributes(
-        header, 'CIFTI_STRUCTURE_CORTEX_LEFT', "COLUMN"
+    offset_l, indices_l = cifti_utils.offset_and_indices(
+        header, 'CIFTI_MODEL_TYPE_SURFACE', 'CIFTI_STRUCTURE_CORTEX_LEFT', "COLUMN"
     )
     assert(offset_l == 455)
     assert(len(indices_l) == 250)
 
-    offset_r, indices_r = cifti_utils.surface_attributes(
-        header, 'CIFTI_STRUCTURE_CORTEX_RIGHT', "COLUMN"
+    offset_r, indices_r = cifti_utils.offset_and_indices(
+        header, 'CIFTI_MODEL_TYPE_SURFACE', 'CIFTI_STRUCTURE_CORTEX_RIGHT', "COLUMN"
     )
     assert(offset_r == 0)
     assert(len(indices_r) == 450)
+
+    offset_s, indices_s = cifti_utils.offset_and_indices(
+        header, 'CIFTI_MODEL_TYPE_VOXELS', 'CIFTI_STRUCTURE_BRAIN_STEM', "COLUMN"
+    )
+    assert(offset_s == 450)
+    assert(len(indices_s) == 5)
 
 
 def test_extract_all_xml_structure():
@@ -58,7 +64,7 @@ def test_extract_all_xml_structure():
     cifti_test = nibabel.load('./logpar/cli/tests/data/test.dconn.nii')
     header = cifti_test.header
    
-    xml_structures = cifti_utils.extract_brainmodel(header, 'ALL', 'COLUMN')
+    xml_structures = cifti_utils.extract_brainmodel(header, 'COLUMN')
     
     assert(len(xml_structures) == 3)
 

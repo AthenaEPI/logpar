@@ -52,8 +52,9 @@ def test_correctly_configured():
                 if constraint is not None:
                     surf = gifti.read(constraint)
                     struc = cifti_utils.principal_structure(surf)
-                    off, ind = cifti_utils.surface_attributes(
-                        header, struc, direction
+                    model = 'CIFTI_MODEL_TYPE_SURFACE'
+                    off, ind = cifti_utils.offset_and_indices(
+                        header, model, struc, direction
                     )
                     test_data = test_data[off:off+len(ind)]
 
@@ -126,8 +127,9 @@ def test_correctly_configured_32bit():
                 if constraint is not None:
                     surf = gifti.read(constraint)
                     struc = cifti_utils.principal_structure(surf)
-                    off, ind = cifti_utils.surface_attributes(header, struc,
-                                                              direction)
+                    model = 'CIFTI_MODEL_TYPE_SURFACE'
+                    off, ind = cifti_utils.offset_and_indices(header, model,
+                                                              struc, direction)
                     test_data = test_data[off:off+len(ind)]
 
                     ady_matrix = cifti_utils.constraint_from_surface(surf, ind)

@@ -81,12 +81,14 @@ def cifti_parcellate(cifti_file, outfile, direction="ROW", to_logodds=True,
 
     if constraint is not None:
         constraint = gifti.read(constraint)
+        modeltype = 'CIFTI_MODEL_TYPE_SURFACE'
         structure = cifti_utils.principal_structure(constraint)
 
         # Get the indices in which the structure-features are
-        offset, indices = cifti_utils.surface_attributes(cifti.header,
-                                                         structure,
+        offset, indices = cifti_utils.offset_and_indices(cifti.header,
+                                                         modeltype, structure,
                                                          direction)
+        indices = numpy.array(indices)
         features = features[offset:offset+len(indices)]
         logging.debug("structure: {}, direction: {}, offset: {},\
                        len(indices): {}, shape:{}".format(structure, direction,

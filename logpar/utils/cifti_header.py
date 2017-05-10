@@ -43,10 +43,9 @@ def header_intersection(header1, header2):
 
             if cifti_utils.is_model_surf(btype):
                 # It's a surface, lets update its indices
-                _, new_vertices = cifti_utils.surface_attributes(header1,
-                                                                 bstr,
-                                                                 dire)
-                _, vertices = cifti_utils.surface_attributes(header2,
+                _, new_vertices = cifti_utils.offset_and_indices(header1, btype,
+                                                                 bstr, dire)
+                _, vertices = cifti_utils.offset_and_indices(header2, btype,
                                                              bstr, dire)
                 common = sorted(set(vertices).intersection(new_vertices))
                 common_txt = cifti_utils.indices2text(common)
@@ -143,12 +142,22 @@ def create_label_header(xml_structures, nparcels):
     return cifti_header
 
 
-def create_conn_header(row_structures, col_structures, dimention=None,
-                       affine=None):
+def volume_xml(dimention, affine):
+    """ Creates the xml of a volume """
+    affine = " ".join(map(str, affine.reshape(-1)))
+    dimention = ",".join(map(str, dimention[:3]))
+
+    volume = xml.Element('Volume', {'VolumeDimensions':dimention})
+    transform = xml.SubElement(volume,
+                               'TransformationMatrixVoxelIndicesIJKtoXYZ',
+                               {'MeterExponent':'-3'})
+    transform.text = affine
+    return volume
+
+
+def create_conn_header(row_structures, col_structures, row_dimention=None,
+                       col_dimention=None, row_affine=None, col_affine=None):
     ''' Creates the header for a dconn matrix '''
-    if dimention is not None:
-        affine = " ".join(map(str, affine.reshape(-1)))
-        dimention = ",".join(map(str, dimention[:3]))
 
     cifti_extension = xml.Element('CIFTI', {'Version': '2'})
 
@@ -160,13 +169,8 @@ def create_conn_header(row_structures, col_structures, dimention=None,
     mat_indx_map_0 = xml.SubElement(matrix, 'MatrixIndicesMap',
                                     {'AppliesToMatrixDimension': '0',
                                      'IndicesMapToDataType': BRAIN_MODEL})
-    if dimention is not None:
-        volume = xml.SubElement(mat_indx_map_0, 'Volume',
-                                {'VolumeDimensions':dimention})
-        transform = xml.SubElement(volume,
-                                   'TransformationMatrixVoxelIndicesIJKtoXYZ',
-                                   {'MeterExponent':'-3'})
-        transform.text = affine
+    if row_dimention is not None:
+        mat_indx_map_0.insert(0, volume_xml(row_dimention, row_affine))
 
     for i, structure in enumerate(row_structures):
         mat_indx_map_0.insert(i, structure)
@@ -175,13 +179,8 @@ def create_conn_header(row_structures, col_structures, dimention=None,
     mat_indx_map_1 = xml.SubElement(matrix, 'MatrixIndicesMap',
                                     {'AppliesToMatrixDimension': '1',
                                      'IndicesMapToDataType': BRAIN_MODEL})
-    if dimention is not None:
-        volume = xml.SubElement(mat_indx_map_1, 'Volume',
-                                {'VolumeDimensions':dimention})
-        transform = xml.SubElement(volume,
-                                   'TransformationMatrixVoxelIndicesIJKtoXYZ',
-                                   {'MeterExponent':'-3'})
-        transform.text = affine
+    if col_dimention is not None:
+        mat_indx_map_1.insert(0, volume_xml(col_dimention, col_affine))
 
     for i, structure in enumerate(col_structures):
         mat_indx_map_1.insert(i, structure)
@@ -195,7 +194,7 @@ def create_conn_header(row_structures, col_structures, dimention=None,
 
 
 def brain_model_xml(mtype, name, coord, offset, size):
-    name, mtype, offset, size = map(str, [name, mtype, offset, size ])
+    name, mtype, offset, size = map(str, [name, mtype, offset, size])
     brain_model = xml.Element('BrainModel', attrib={'IndexOffset':offset,
                                                     'IndexCount':str(len(coord)),
                                                     'ModelType':mtype,
@@ -209,48 +208,3 @@ def brain_model_xml(mtype, name, coord, offset, size):
         vertx.text = " ".join(map(str, coord))
 
     return brain_model
-
-
-def change_brainmodel(in_xml_header, direction, mtype, name, new_mtype=None,
-                      new_name=None, new_coord=None, new_offset=None,
-                      new_size=None):
-    raise ValueError('Not tested, not sure useful')
-    dim = cifti_utils.direction2dimention(direction)
-
-    xml_header = xml.fromstring(xml.tostring(in_xml_header))
-
-    mquery = ".//MatrixIndicesMap[@AppliesToMatrixDimension='{}']"
-    bquery = "./BrainModel[@ModelType='{}'][@BrainStructure='{}']"
-    matrix_indices_map = xml_header.find(mquery.format(dim))
-    bm_list = matrix_indices_map.findall(bquery.format(mtype, name))
-
-    if bm_list == []:
-        raise ValueError('Structure not found in xml_header')
-
-    brainmodel = bm_list[0]
-
-    new_attrib = {'ModelType': new_mtype, 'BrainStructure': new_name,
-                  'IndexOffset': new_offset,
-                  'SurfaceNumberOfVertices': new_size}
-
-    for k, v in new_attrib.iteritems():
-        if k in brainmodel.attrib and v is None:
-            new_attrib[k] = brainmodel.attrib[k]
-
-    if new_coord is None:
-        if brainmodel.attrib['ModelType'] == 'CIFTI_MODEL_TYPE_VOXELS':
-            new_coord = cifti_utils.text2voxels(brainmodel[0].text)
-        else:
-            new_coord = cifti_utils.text2indices(brainmodel[0].text)
-
-    new_mtype = new_attrib['ModelType']
-    new_name = new_attrib['BrainStructure']
-    new_offset = new_attrib['IndexOffset']
-    new_size = new_attrib['SurfaceNumberOfVertices']
-
-    new_bm = brain_model_xml(new_mtype, new_name, new_coord, new_offset,
-                             new_size)
-    brainmodel.attrib = new_bm.attrib
-    brainmodel.text = new_bm.text
-
-    return xml_header

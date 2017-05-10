@@ -36,6 +36,9 @@ if __name__ == "__main__":
                         type=str, help='outfile to write the dendrogram as a\
                                         csv file')
 
+
+    parser.add_argument('-verbose', dest='verbose', action='store_true')
+
     args = parser.parse_args()
 
     cifti_parcellate(args.cifti, args.outfile, args.direction, args.tologodds,

@@ -113,22 +113,23 @@ def tractogram(particles, shm, mask, affine, step_size, maxlen, algo,
                                        offset, psize)
     col_structures.append(xml)
 
-    row_structures = [cifti_header.brain_model_xml(
-                        'CIFTI_MODEL_TYPE_VOXELS',
-                        'CIFTI_STRUCTURE_ALL_WHITE_MATTER',
-                        numpy.transpose(nzr_mask), 0, None)]
+    mtype, bstr = 'CIFTI_MODEL_TYPE_VOXELS', 'CIFTI_STRUCTURE_ALL_WHITE_MATTER'
+    row_structures = [cifti_header.brain_model_xml(mtype, bstr,
+                                                   numpy.transpose(nzr_mask),
+                                                   0, None)]
     header = cifti_header.create_conn_header(row_structures, col_structures,
-                                             mask.shape, affine)
+                                             mask.shape, mask.shape, affine,
+                                             affine)
     outfile = os.path.join(outdir, "tractogram_{}.dconn.nii".format(wpid))
-    cifti_utils.save_cifti(outfile, tract.T[None, None, None, None, :],
+    cifti_utils.save_nifti(outfile, tract.T[None, None, None, None, :],
                            header=header)
     print("Worker {} finished".format(wpid))
     return
 
 
 def vmgenerator(dmri_file, bvals_file, bvecs_file, mask_file, seeds_file,
-                algorithm, particles, nbr_process, spp, step, maxlen, outdir,
-                save_stream=False, verbose=0):
+                algorithm, particles, nbr_process, step, maxlen, outdir,
+                spp=None, save_stream=False, verbose=0):
     if verbose:
         logging.basicConfig(level=logging.DEBUG)
 
@@ -151,14 +152,14 @@ def vmgenerator(dmri_file, bvals_file, bvecs_file, mask_file, seeds_file,
     csd_fit = csd_model.fit(diffusion_data, mask=mask)
     shm = csd_fit.shm_coeff
     shm_file = os.path.join(outdir, 'shm.nii')
-    cifti_utils.save_cifti(shm_file, shm)
+    cifti_utils.save_nifti(shm_file, shm)
 
     #Start multiprocessing environment
     if not nbr_process:
         nbr_process = multiprocessing.cpu_count()
 
     cifti_info, seeds_pnts = seeds_utils.load_seeds(seeds_file)
-    s = 1000
+    s = 1000 if spp is None else spp
     seed_chunks = [seeds_pnts[i:i+s] for i in xrange(0, len(seeds_pnts), s)]
     info_chunks = [cifti_info[i:i+s] for i in xrange(0, len(cifti_info), s)]
 
