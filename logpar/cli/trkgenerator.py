@@ -111,7 +111,7 @@ def trkgenerator(dmri_file, bvals_file, bvecs_file, mask_file, seeds_file,
     csd_fit = csd_model.fit(diffusion_data, mask=mask)
     shm = csd_fit.shm_coeff
     shm_file = os.path.join(outdir, 'shm.nii')
-    cifti_utils.save_cifti(shm_file, shm)
+    cifti_utils.save_nifti(shm_file, shm)
 
     #Start multiprocessing environment
     if not nbr_process:

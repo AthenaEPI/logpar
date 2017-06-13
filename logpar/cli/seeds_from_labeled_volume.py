@@ -98,6 +98,6 @@ def seeds_from_labeled_volume(labeled_volume_file, labels_file,
         f.write(text)
     # Save just for visual confirmation
     if vol_out:
-        cifti_utils.save_cifti(vol_out, seed_volume,
+        cifti_utils.save_nifti(vol_out, seed_volume,
                                header=labels_nifti.header,
                                affine=labels_nifti.affine, version=1)
