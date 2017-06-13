@@ -96,3 +96,22 @@ def test_constraint_matrix():
     base = squareform(ady_matrix[vertices[:, None], vertices])
 
     numpy.testing.assert_equal(sub_ady_matrix, base)
+
+
+def test_pos_in_array():
+    ''' Testing the function pos_in_array '''
+    a1 = [1, 2, 3, 4, 5]
+    a2 = [5, 4, 3, 2, 1, 9, 8, 7]
+    res = [4, 3, 2, 1, 0]
+    res_off_5 = [9, 8, 7, 6, 5]
+
+    numpy.testing.assert_equal(cifti_utils.pos_in_array(a1, a2, 0), res)
+    numpy.testing.assert_equal(cifti_utils.pos_in_array(a1, a2, 5), res_off_5)
+
+    a1 = [0, 0, 1, 1, 2]
+    a2 = [1, 0, 9, 9, 9, 9, 9]
+    res = [1, 1, 0, 0, -1]
+    res_off_3 = [4, 4, 3, 3, -1]
+
+    numpy.testing.assert_equal(cifti_utils.pos_in_array(a1, a2, 0), res)
+    numpy.testing.assert_equal(cifti_utils.pos_in_array(a1, a2, 3), res_off_3)
