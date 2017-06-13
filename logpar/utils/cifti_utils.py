@@ -1,5 +1,7 @@
 ''' Utils to manipulate CIFTI files '''
+import itertools
 import xml.etree.ElementTree as xml
+from collections import defaultdict
 
 import numpy
 import nibabel
@@ -274,11 +276,47 @@ def extract_parcel(cifti_header, direction, name=None):
     '''
     matrix_indices = extract_matrixindicesmap(cifti_header, direction)
 
-    query = "./Parcel"
+    query = ".//Parcel"
     if name is not None:
         query += "[@Name='{}']".format(name)
     parcel = matrix_indices.findall(query)
     return parcel
+
+
+def extract_label(cifti_header, direction, key=None):
+    ''' Retrieves the xml of a label from a cifti file.
+
+       Parameters
+       ----------
+       cifti_header: cifti header
+           Header of the cifti file
+       direction: string
+           ROW or COLUMN
+       key: string
+           Key of label
+
+       Returns
+       -------
+       xml_entitie
+       Returns an xml (Elemtree) object
+    '''
+    matrix_indices = extract_matrixindicesmap(cifti_header, direction)
+
+    query = ".//Label"
+    if key is not None:
+        query += "[@Key='{}']".format(key)
+    label = matrix_indices.findall(query)
+    return label
+
+
+def get_feature_type(cifti_header, direction):
+    """ Returns either VOXELS, SURFACE or MIXED, taking into
+        account the ModelType values in the direction"""
+    brainmodels = extract_brainmodel(cifti_header, direction)
+
+    modeltypes = set(b.attrib['ModelType'] for b in brainmodels)
+
+    return 'CIFTI_MODEL_TYPE_MIXED' if len(modeltypes) > 1 else next(modeltypes)
 
 
 def principal_structure(gifti_obj):
@@ -314,14 +352,15 @@ def matrix_size(header):
     return size
 
 
-def cifti_filter_indices(cifti, direction, modeltype, structure, indices):
-    offset, indices = offset_and_indices(cifti.header, modeltype,
+def cifti_filter_indices(cifti_header, direction, modeltype,
+                         structure, idx_search):
+    offset, indices = offset_and_indices(cifti_header, modeltype,
                                          structure, direction)
-    return pos_in_array(indices, indices, offset)
+    return pos_in_array(idx_search, indices, offset)
 
 
-def cifti_filter_parcels(cifti, direction, parcels):
-    extracted = extract_parcel(cifti.header, direction)
+def cifti_filter_parcels(cifti_header, direction, parcels):
+    extracted = extract_parcel(cifti_header, direction)
     extracted_names = numpy.array([p.attrib['Name'] for p in extracted])
 
     return pos_in_array(parcels, extracted_names, offset=0)
@@ -361,6 +400,33 @@ def retrieve_common_data(header, cifti_matrix):
     return common_data
 
 
+def constraint_from_voxels(cifti_header, direction, vertices=None):
+    ''' Retrieves the adyacency matrix between voxels '''
+    brainmodels = extract_brainmodel(cifti_header, direction)
+
+    def get_voxels(brainmodel):
+        structure = brainmodel.attrib['BrainStructure']
+        _, voxels = offset_and_indices(cifti_header, 'CIFTI_MODEL_TYPE_VOXELS',
+                                       structure, direction)
+        return voxels
+
+    # Retrieve the voxels for each brainmodel in the specified direction
+    voxels = [get_voxels(b) for b in brainmodels]
+
+    if vertices is not None:
+        # Filter voxels
+        voxels = [vx for i, vx in enumerate(voxels) if i in vertices]
+
+    def are_neighbors(vox_i, vox_j):
+        return next((False for i, j in zip(vox_i, vox_j) if abs(i-j) > 1), True)
+
+    # Compute adyacency matrix assuming that combinations has the right order
+    ady_matrix = [are_neighbors(*b) for b in itertools.combinations(voxels, 2)]
+    ady_matrix = numpy.array(ady_matrix, dtype=numpy.int8)
+
+    return ady_matrix
+
+
 def constraint_from_surface(surface, vertices=None):
     ''' Retrieves the constraint matrix between vertices from a surface
 
@@ -377,7 +443,6 @@ def constraint_from_surface(surface, vertices=None):
         array_like
             A condensed adyacency matrix. The squareform can be retrieved
             using scipy.spatial.distance.squareform '''
-
     surf_size = len(surface.darrays[0].data)
     edges_map = numpy.zeros(surf_size) - 1
 
@@ -410,9 +475,6 @@ def constraint_from_surface(surface, vertices=None):
 def pos_in_array(arr1, arr2, offset):
     ''' Returns in which position of arr2 is each element of arr1.
         If the element is not found, returns the position -1 '''
-    def find_in_arr2(elem):
-        """ Finds an element in arr2 """
-        search = (j + offset for j, e in enumerate(arr2) if e == elem)
-        return next(search, -1)
-
-    return [find_in_arr2(elem) for elem in arr1]
+    elem2pos_in_arr2 = defaultdict(lambda: -1,
+                                   {e:i+offset for i, e in enumerate(arr2)})
+    return [elem2pos_in_arr2[e] for e in arr1]
