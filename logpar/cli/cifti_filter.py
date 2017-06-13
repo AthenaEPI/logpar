@@ -66,7 +66,7 @@ def cifti_filter(cifti_file, filter_file, outfile, direction="ROW", verbose=0):
     filtered_structures = []
     offset = 0
     for (modeltype, structure), indices in all_structures.iteritems():
-        new_order += cifti_utils.cifti_filter_indices(cifti, direction,
+        new_order += cifti_utils.cifti_filter_indices(cifti.header, direction,
                                                       modeltype, structure,
                                                       indices)
         size = all_sizes[(modeltype, structure)]
