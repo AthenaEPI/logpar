@@ -42,8 +42,7 @@ if __name__ == "__main__":
                         help='outfile where to save tractograms')
 
     parser.add_argument('-spp', dest='spp', type=float,
-                        default=5*10**5, help='Number of streamlines to \
-                                               create per process')
+                        help='Number of seeds to use per process')
 
     parser.add_argument('-savetrk', action='store_true',
                         help='if present, streamlines are also saved')
