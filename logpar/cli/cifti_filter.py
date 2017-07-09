@@ -11,8 +11,9 @@ from ..utils import cifti_utils, cifti_header, seeds_utils
 
 def check_input(cifti_file, direction):
     ''' Basic input checking '''
-
-    if cifti_file.split('.')[-2] not in ['dconn']:
+    not_dconn = cifti_file.split('.')[-2] not in ['dconn']
+    not_dconn_gz = cifti_file.split('.')[-3] not in ['dconn']
+    if not_dconn and not_dconn_gz:
         raise ValueError('Only dconn files supported so far')
 
     if direction not in ['ROW', 'COLUMN']:

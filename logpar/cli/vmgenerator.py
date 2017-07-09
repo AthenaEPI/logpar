@@ -47,6 +47,17 @@ def tractogram(particles, shm, mask, affine, step_size, maxlen, algo,
     wpid, (seeds, cifti_info) = wpid_seeds_info
     print "Worker {} started".format(wpid)
 
+    outtract = os.path.join(outdir, "tractogram_{}.dconn.nii.gz".format(wpid))
+    # Check if file exists
+    if os.path.isfile(outtract):
+        try:
+            nibabel.load(outtract).get_data()
+            print "File already exists, use the -f flag to overwrite it"
+            return
+        except:
+            print "File {} is damaged, recomputing".format(outtract)
+            pass
+
     shm = cifti_utils.load_data(shm)
     mask = cifti_utils.load_data(mask)
 
@@ -120,7 +131,7 @@ def tractogram(particles, shm, mask, affine, step_size, maxlen, algo,
     header = cifti_header.create_conn_header(row_structures, col_structures,
                                              mask.shape, mask.shape, affine,
                                              affine)
-    outfile = os.path.join(outdir, "tractogram_{}.dconn.nii".format(wpid))
+    outfile = os.path.join(outdir, "tractogram_{}.dconn.nii.gz".format(wpid))
     cifti_utils.save_nifti(outfile, tract.T[None, None, None, None, :],
                            header=header)
     print("Worker {} finished".format(wpid))
@@ -173,7 +184,10 @@ def vmgenerator(dmri_file, bvals_file, bvecs_file, mask_file, seeds_file,
                           save_stream)
 
     logging.debug("Starting multiprocessing environment")
-    res_streamlines = pool.map(tractogram_, list(enumerate(zip(seed_chunks,
-                                                               info_chunks))))
+    pool.map(tractogram_, list(enumerate(zip(seed_chunks, info_chunks))))
     pool.close()
     pool.join()
+
+    logging.debug("vmgenerator finished")
+    finished_file = os.path.join(outdir, 'vmgenerator.end')
+    open(finished_file, 'w').close()

@@ -12,16 +12,12 @@ from logpar.utils import cifti_utils
 def read_labels_file(labels_file):
     ''' Returns a dictionary with the labels as keys and which structure
         they represent as value '''
-    valid_cifti_structures = set(cifti_utils.CIFTI_STRUCTURES)
-
     label2structure = {}
     with open(labels_file) as f:
         for line in f:
             label, struc = line.split()[:2]
             label = int(label)
 
-            #if struc not in valid_cifti_structures:
-            #    print("{} is not a valid CIFTI structure".format(struc))
             label2structure[label] = struc
 
     return label2structure
@@ -55,10 +51,9 @@ def seeds_from_labeled_volume(labeled_volume_file, labels_file,
     # Create seeds from voxels
     seed_volume = numpy.zeros_like(labels_volume)  # Visual confirmation
     text = ""
-
+    label_and_nonzero = []  # Stores tuples (label, nonzero)
     for label in label2structure:
-        logging.debug('Procesing label: {}'.format(label))
-        label_mask = labels_volume==label
+        label_mask = labels_volume == label
 
         # We dilate the structure *vx_expand* times, which could be zero
         if vx_expand:
@@ -68,18 +63,28 @@ def seeds_from_labeled_volume(labeled_volume_file, labels_file,
             seed_structure = label_mask
 
         if style == 'border':
-          # erode the structure one time and substract to get the border
-          eroded_structure = morphology.binary_erosion(label_mask)
-          seed_structure = seed_structure - eroded_structure
+            # erode the structure one time and substract to get the border
+            eroded_structure = morphology.binary_erosion(label_mask)
+            seed_structure = seed_structure - eroded_structure
 
         # Intersect with the mask
         if mask is not None:
             seed_structure = numpy.multiply(seed_structure, mask)
         nzr = seed_structure.nonzero()
+        label_and_nonzero.append((label, nzr))
+
+    # We sort them so the small structures can survive
+    label_and_nonzero.sort(key=lambda t: len(t[1]), reverse=True)
+    for label, nzr in label_and_nonzero:
         seed_volume[nzr] = label
 
-        # Create seeds randomly distributed inside of each voxel
+    for label in label2structure:
+        logging.debug('Procesing label: {}'.format(label))
+        seed_structure = (seed_volume == label)
+        nzr = seed_structure.nonzero()
         nzr_positions = numpy.transpose(nzr)
+
+        # Create seeds randomly distributed inside of each voxel
         label_seeds = utils.random_seeds_from_mask(seed_structure,
                                                    seeds_per_voxel,
                                                    affine=labels_affine)
@@ -96,6 +101,7 @@ def seeds_from_labeled_volume(labeled_volume_file, labels_file,
 
     with open(outfile, 'a') as f:
         f.write(text)
+
     # Save just for visual confirmation
     if vol_out:
         cifti_utils.save_nifti(vol_out, seed_volume,
