@@ -197,14 +197,12 @@ def extract_matrixindicesmap(cifti_header, direction):
     dim = direction2dimention(direction)
     cxml = extract_xml_header(cifti_header)
 
-    query = ".//MatrixIndicesMap[@AppliesToMatrixDimension='{}']"
-    matrix_indices_map = cxml.find(query.format(dim))
-
-    if matrix_indices_map == []:
-        if dim in [0, 1]:
-            matrix_indices_map = cxml.find(query.format('0,1'))
-
-    return matrix_indices_map
+    query = ".//MatrixIndicesMap"
+    mims = cxml.findall(".//MatrixIndicesMap")
+    
+    for mim in mims:
+        if dim in map(int, mim.attrib['AppliesToMatrixDimension'].split(',')):
+            return mim
 
 
 def extract_volume(cifti_header, direction):
