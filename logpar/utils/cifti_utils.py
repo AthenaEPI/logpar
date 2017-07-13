@@ -197,11 +197,10 @@ def extract_matrixindicesmap(cifti_header, direction):
     dim = direction2dimention(direction)
     cxml = extract_xml_header(cifti_header)
 
-    query = ".//MatrixIndicesMap"
     mims = cxml.findall(".//MatrixIndicesMap")
     
     for mim in mims:
-        if dim in map(int, mim.attrib['AppliesToMatrixDimension'].split(',')):
+        if str(dim) in mim.attrib['AppliesToMatrixDimension'].split(','):
             return mim
 
 
@@ -364,8 +363,9 @@ def cifti_filter_parcels(cifti_header, direction, parcels):
     return pos_in_array(parcels, extracted_names, offset=0)
 
 
-def retrieve_common_data(header, cifti_matrix):
-    ''' Retrieves data in cifti_matrix from the structures in header '''
+def retrieve_head_data(header, cifti_matrix):
+    ''' Retrieves data in cifti_matrix from the structures/indices
+        present in header '''
     data = cifti_matrix.get_data()[0, 0, 0, 0]
     common_data = numpy.zeros(matrix_size(header))
     map_indices = {}
@@ -386,14 +386,16 @@ def retrieve_common_data(header, cifti_matrix):
 
             if is_model_surf(btype):
                 _, indices = offset_and_indices(header, btype, bstr, dire)
-                itmp += cifti_filter_indices(cifti_matrix, dire, btype,
-                                             bstr, indices).tolist()
+                itmp += cifti_filter_indices(cifti_matrix.header, dire, btype,
+                                             bstr, indices)
             else:
                 raise NotImplementedError()
 
         map_indices[dire] = numpy.ravel(itmp).astype(int)
 
     common_data = data[map_indices['ROW'][:, None], map_indices['COLUMN']]
+    common_data[map_indices['ROW'] == -1] = 0
+    common_data[:, map_indices['COLUMN'] == -1] = 0
 
     return common_data
 
@@ -444,12 +446,12 @@ def constraint_from_surface(surface, vertices=None):
     surf_size = len(surface.darrays[0].data)
     edges_map = numpy.zeros(surf_size) - 1
 
-    if vertices is not None:
-        nvertices = len(vertices)
-        edges_map[vertices] = range(nvertices)
-        neighbors = numpy.zeros(nvertices*(nvertices-1)/2, dtype=numpy.int8)
-    else:
-        neighbors = numpy.ones(surf_size*(surf_size-1)/2, dtype=numpy.int8)
+    if not vertices:
+        vertices = range(surf_size)
+
+    nvertices = len(vertices)
+    edges_map[vertices] = range(nvertices)
+    neighbors = numpy.zeros(nvertices*(nvertices-1)/2, dtype=numpy.int8)
 
     edges = surface.darrays[1].data
 
@@ -474,5 +476,5 @@ def pos_in_array(arr1, arr2, offset):
     ''' Returns in which position of arr2 is each element of arr1.
         If the element is not found, returns the position -1 '''
     elem2pos_in_arr2 = defaultdict(lambda: -1,
-                                   {e:i+offset for i, e in enumerate(arr2)})
+                                   {e: i+offset for i, e in enumerate(arr2)})
     return [elem2pos_in_arr2[e] for e in arr1]
