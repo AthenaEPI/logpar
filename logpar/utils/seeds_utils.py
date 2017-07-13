@@ -17,14 +17,13 @@ def load_seeds(seeds_file):
             if model_type == 'CIFTI_MODEL_TYPE_VOXELS':
                 coord = tuple(map(int, splitted[2:5]))
                 size = None
-                seeds = splitted[5:]
+                seeds = numpy.array(map(float, splitted[5:]))
+                seeds.resize((len(seeds)/3, 3))
             else:
                 coord = int(splitted[2])
                 size = splitted[3]
-                seeds = splitted[4:]
+                seeds = numpy.array(map(float, splitted[4:]))
 
-            seeds = numpy.array(map(float, seeds))
-            seeds.resize((len(seeds)/3, 3))
             cifti_info.append((model_type, brain_structure, coord, size))
             seeds_pnts.append(seeds)
 

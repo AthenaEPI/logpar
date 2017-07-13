@@ -9,45 +9,51 @@ from logpar.utils import cifti_utils
 
 
 def header_intersection(header1, header2):
-    ''' Retrieves a new CIFTI header, which contains the structures
-        present in both input headers '''
-    xml_header = xml.fromstring(header2.extensions[0].get_content())
+    ''' Crates a new CIFTI header, which contains only the structures/indices
+        present in both headers at the same time '''
+    # We will base the new xml on the xml from header 2
+    xml_new = cifti_utils.extract_xml_header(header2)
 
-    for dire in ['ROW', 'COLUMN']:
-        new_bmodels = cifti_utils.extract_brainmodel(header1, 'ALL', dire)
-        new_strucs = set(b.attrib['BrainStructure'] for b in new_bmodels)
+    for direction in ['ROW', 'COLUMN']:
+        bmodels_h1 = cifti_utils.extract_brainmodel(header1, direction)
+        structs_h1 = set(b.attrib['BrainStructure'] for b in bmodels_h1)
 
-        new_parcels = cifti_utils.extract_parcel(header1, 'ALL', dire)
-        new_parcels = set(p.attrib['Name'] for p in new_parcels)
+        parcels_h1 = cifti_utils.extract_parcel(header1, direction)
+        parcels_h1 = set(p.attrib['Name'] for p in parcels_h1)
 
-        idx = 0 if dire == 'ROW' else 1
-        query = ".//MatrixIndicesMap[@AppliesToMatrixDimension='{}']".format(idx)
-        mimap = xml_header.find(query)
+        # I want to modify the MatrixIndicesMap of xml_h2, therefore, I
+        # don't have other choise but to use xml.find
+        dim = cifti_utils.direction2dimention(direction)
+        mims = xml_new.findall(".//MatrixIndicesMap")
+        for mim in mims:
+            if str(dim) in mim.attrib['AppliesToMatrixDimension'].split(','):
+                mim_new = mim
 
         # If this direction has labels, we keep only the labels present
         # in both headers
-        parcels = mimap.findall('Parcels')
+        parcels = mim_new.findall('.//Parcel')
         for parcel in parcels:
-            if parcel.attrib['Name'] not in new_parcels:
-                mimap.remove(parcel)  # Remove it
+            if parcel.attrib['Name'] not in parcels_h1:
+                mim_new.remove(parcel)  # Remove i
 
         # If the direction has BrainModels, we keep only the BM present
         # in both headers. Moreover, we keep only the indices they share
-        bmodels = mimap.findall('BrainModel')
+        bmodels = mim_new.findall('.//BrainModel')
         for bmodel in bmodels:
             bstr = bmodel.attrib['BrainStructure']
             btype = bmodel.attrib['ModelType']
 
-            if bstr not in new_strucs:
-                mimap.remove(bmodel)  # Not present: remove it
+            if bstr not in structs_h1:
+                mim_new.remove(bmodel)  # Not present: remove it
+                continue
 
             if cifti_utils.is_model_surf(btype):
                 # It's a surface, lets update its indices
-                _, new_vertices = cifti_utils.offset_and_indices(header1, btype,
-                                                                 bstr, dire)
-                _, vertices = cifti_utils.offset_and_indices(header2, btype,
-                                                             bstr, dire)
-                common = sorted(set(vertices).intersection(new_vertices))
+                _, vertices1 = cifti_utils.offset_and_indices(header1, btype,
+                                                              bstr, direction)
+                _, vertices2 = cifti_utils.offset_and_indices(header2, btype,
+                                                              bstr, direction)
+                common = sorted(set(vertices1).intersection(vertices2))
                 common_txt = cifti_utils.indices2text(common)
                 bmodel.find('VertexIndices').text = common_txt
                 bmodel.attrib['IndexCount'] = str(len(common))
@@ -57,16 +63,88 @@ def header_intersection(header1, header2):
 
         # Finally, fix the attributes of each brain model
         offset = 0
+        bmodels = mim_new.findall('.//BrainModel')
         for bmodel in bmodels:
             bmodel.attrib['IndexOffset'] = str(offset)
             offset += int(bmodel.attrib['IndexCount'])
 
-        new_xml_string = xml.tostring(xml_header)
-        new_extension = nibabel.nifti1.Nifti1Extension(32, new_xml_string)
+    xml_string = xml.tostring(xml_new)
+    header_new = header2.copy()
+    header_new.extensions[0] = nibabel.nifti1.Nifti1Extension(32, xml_string)
 
-        header2.extensions[0] = new_extension
+    return header_new
 
-        return header2
+
+def header_union(header1, header2):
+    ''' Retrieves a new CIFTI header, which contains both the
+        structures/indices of headers 1 and 2 '''
+    # We will base the new xml on the xml from header 1
+    xml_new = cifti_utils.extract_xml_header(header1)
+
+    for direction in ['ROW', 'COLUMN']:
+        bmodels_h1 = cifti_utils.extract_brainmodel(header1, direction)
+        structs_h1 = set(b.attrib['BrainStructure'] for b in bmodels_h1)
+
+        parcels_h1 = cifti_utils.extract_parcel(header1, direction)
+        parcels_h1 = set(p.attrib['Name'] for p in parcels_h1)
+
+        # I want to modify the MatrixIndicesMap of xml_new, therefore, I
+        # don't have other choise but to use xml.find
+        dim = cifti_utils.direction2dimention(direction)
+        mims = xml_new.findall(".//MatrixIndicesMap")
+        for mim in mims:
+            if str(dim) in mim.attrib['AppliesToMatrixDimension'].split(','):
+                mim_new = mim
+
+        # If this direction has labels, we keep only the labels present
+        # in both headers
+        parcels = cifti_utils.extract_parcel(header2, direction)
+        for parcel in parcels:
+            if parcel.attrib['Name'] not in parcels_h1:
+                mim_new.append(parcel)  # Add it
+
+        # If the direction has BrainModels, we unite the BM present
+        # in both headers. Moreover, we keep all the used indices
+        bmodels = cifti_utils.extract_brainmodel(header2, direction)
+        for bmodel in bmodels:
+            bstr = bmodel.attrib['BrainStructure']
+            btype = bmodel.attrib['ModelType']
+
+            if bstr not in structs_h1:
+                mim_new.append(bmodel)  # Not present: add it
+                continue
+
+            if cifti_utils.is_model_surf(btype):
+                # It's a present surface, lets unite the indices
+                _, vertices1 = cifti_utils.offset_and_indices(header1, btype,
+                                                              bstr, direction)
+                _, vertices2 = cifti_utils.offset_and_indices(header2, btype,
+                                                              bstr, direction)
+                common = sorted(set(vertices1).union(vertices2))
+                common_txt = cifti_utils.indices2text(common)
+
+                # Update structure in xml_new
+                query = ".//BrainModel[@ModelType='{}'][@BrainStructure='{}']"
+                bmodel = mim_new.find(query.format(btype, bstr))
+
+                bmodel.find('VertexIndices').text = common_txt
+                bmodel.attrib['IndexCount'] = str(len(common))
+            else:
+                # It's a volume, lets update its voxels
+                raise NotImplementedError()
+
+        # Finally, fix the attributes of each brain model
+        offset = 0
+        bmodels = mim_new.findall('.//BrainModel')
+        for bmodel in bmodels:
+            bmodel.attrib['IndexOffset'] = str(offset)
+            offset += int(bmodel.attrib['IndexCount'])
+
+    xml_string = xml.tostring(xml_new)
+    header_new = header1.copy()
+    header_new.extensions[0] = nibabel.nifti1.Nifti1Extension(32, xml_string)
+
+    return header_new
 
 
 def soft_colors_xml_label_map(nlabels):

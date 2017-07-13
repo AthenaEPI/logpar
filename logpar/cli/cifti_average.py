@@ -16,27 +16,30 @@ def check_input(matrix_files, outfile):
         raise ValueError('The output file MUST be of the same type as inputs')
 
 
-def cifti_average(matrix_files, outfile, in_logodds=False):
-
+def cifti_average(matrix_files, outfile, in_logodds=False, only_common=False):
     check_input(matrix_files, outfile)
 
     nbr_matrices = len(matrix_files)
     matrices = [nibabel.load(mat) for mat in matrix_files]
     headers = [mat.header for mat in matrices]
-
     # First, we retrieve the strucutures/indices that all the subjects
     # share for both directions
-    common_header = headers[0]
-    for header in headers:
-        common_header = cifti_header.header_intersection(header, common_header)
+    if only_common:
+        header_function = cifti_header.header_intersection
+    else:
+        header_function = cifti_header.header_union
 
-    sizeR, sizeC = cifti_utils.matrix_size(common_header)
+    average_header = headers[0]
+    for header in headers[1:]:
+        average_header = header_function(header, average_header)
+
+    sizeR, sizeC = cifti_utils.matrix_size(average_header)
 
     average_connectivity = numpy.zeros((sizeR, sizeC), dtype=numpy.float32)
 
     matrices = [nibabel.load(mat) for mat in matrix_files] 
     for i, matrix in enumerate(matrices):
-        subject_conn = cifti_utils.retrieve_common_data(common_header, matrix)
+        subject_conn = cifti_utils.retrieve_head_data(average_header, matrix)
         if in_logodds:
             subject_conn = transform.to_logodds(subject_conn)
 
@@ -49,5 +52,5 @@ def cifti_average(matrix_files, outfile, in_logodds=False):
 
     cifti_utils.save_nifti(outfile,
                            average_connectivity[None, None, None, None, ...],
-                           header=common_header,
+                           header=average_header,
                            affine=matrices[0].affine)

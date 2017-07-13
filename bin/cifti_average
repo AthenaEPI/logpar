@@ -6,7 +6,7 @@ from logpar.cli.cifti_average import cifti_average
 
 if __name__ == "__main__":
     # Parser
-    parser = argparse.ArgumentParser(description='Creates dendrogram')
+    parser = argparse.ArgumentParser(description='Computes an average matrix')
 
     parser.add_argument('-matrices', dest='matrices', required=True,
                         nargs='+', type=str, help='Dendrogram')
@@ -18,6 +18,16 @@ if __name__ == "__main__":
                         help='If present, the average is computed in the\
                               LogOdds space')
 
+    parser.add_argument('-only_common', action='store_true',
+                        help='By default, if a structure/index is present in \
+                              one file but not in the others, it is asume to \
+                              have a zero value when not present. If this \
+                              flag is used, the average is computed using ONLY \
+                              structures/indices that are present in ALL of \
+                              the matrices at the same time')
+
+
     args = parser.parse_args()
 
-    cifti_average(args.matrices, args.outfile, args.in_logodds)
+    cifti_average(args.matrices, args.outfile, args.in_logodds,
+                  args.only_common)

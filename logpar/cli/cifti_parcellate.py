@@ -143,22 +143,23 @@ def cifti_parcellate(cifti_file, outfile, direction="ROW", to_logodds=True,
     dendro = clustering(features, method='ward', constraints=ady_matrix,
                         min_size=min_size, copy=0)
     # And save in disk
-    xml_structures = cifti_utils.extract_brainmodel(cifti.header,
-                                                    'ALL',
-                                                    direction)
+    xml_structures = cifti_utils.extract_brainmodel(cifti.header, direction)
     if constraint is not None:
         xml_structures = cifti_utils.extract_brainmodel(cifti.header,
-                                                        structure,
-                                                        direction)
+                                                        direction,
+                                                        'CIFTI_MODEL_TYPE_SURFACE',
+                                                        structure)
     new_offset = 0
     vstruct = False
     for structure in xml_structures:
 
         if (structure.attrib['ModelType'] == 'CIFTI_MODEL_TYPE_SURFACE'):
 
-            _, indices = cifti_utils.surface_attributes(cifti.header,
+            _, indices = cifti_utils.offset_and_indices(cifti.header,
+                                                        'CIFTI_MODEL_TYPE_SURFACE',
                                                         structure.attrib['BrainStructure'],
                                                         direction)
+            indices = numpy.array(indices)
             indices = indices[nzr_rows[:len(indices)]]
             structure[0].text = cifti_utils.indices2text(indices)
             new_count = len(indices)
