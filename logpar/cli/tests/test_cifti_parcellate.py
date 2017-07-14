@@ -48,7 +48,7 @@ def test_correctly_configured():
                     test_data = numpy.transpose(test_data)
 
                 ady_matrix = None
-
+                struc, model = None, None
                 if constraint is not None:
                     surf = gifti.read(constraint)
                     struc = cifti_utils.principal_structure(surf)
