@@ -446,7 +446,7 @@ def constraint_from_surface(surface, vertices=None):
     surf_size = len(surface.darrays[0].data)
     edges_map = numpy.zeros(surf_size) - 1
 
-    if not vertices:
+    if vertices is None:
         vertices = range(surf_size)
 
     nvertices = len(vertices)

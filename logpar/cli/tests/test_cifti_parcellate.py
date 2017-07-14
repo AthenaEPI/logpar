@@ -48,7 +48,7 @@ def test_correctly_configured():
                     test_data = numpy.transpose(test_data)
 
                 ady_matrix = None
-                struc = 'ALL'
+
                 if constraint is not None:
                     surf = gifti.read(constraint)
                     struc = cifti_utils.principal_structure(surf)
@@ -72,8 +72,8 @@ def test_correctly_configured():
                 # The results should be the same
                 numpy.testing.assert_almost_equal(dendro, dendro2, 5)
 
-                cifti_xml = cifti_utils.extract_brainmodel(header, struc,
-                                                           direction)
+                cifti_xml = cifti_utils.extract_brainmodel(header, direction,
+                                                           model, struc)
                 new_offset = 0
                 vstruct = False
                 for structure in cifti_xml:
