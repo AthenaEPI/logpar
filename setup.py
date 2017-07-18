@@ -30,5 +30,6 @@ setup(name=package_name,
                'bin/cifti_parcellate', 'bin/extract_parcellation',
                'bin/cifti_average', 'bin/seeds_from_labeled_volume',
                'bin/trkgenerator', 'bin/basic_hagmann',
-               'bin/cifti_merge', 'bin/cifti_filter'],
+               'bin/cifti_merge', 'bin/cifti_filter',
+               'bin/avg_length_matrix'],
       zip_safe=False)

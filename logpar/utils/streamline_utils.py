@@ -87,7 +87,7 @@ def length(streamline, transformation=None):
 
 
 def nbr_visited_voxels(streamline, affine=None):
-    ''' Computes the number of voxels a streamline pass trought, if an 
+    ''' Computes the number of voxels a streamline pass trought, if an
         affine is given, its inverse is computed and used to transform
         the streamline to voxel space
 
@@ -105,8 +105,8 @@ def nbr_visited_voxels(streamline, affine=None):
 
 def transform_and_round(points, transformation=None):
     ''' Tansforms the points of a streamline to a new space, then it rounds
-        the resulting points. If no transformation is given, the points are
-        only rounded '''
+        down the resulting points. If no transformation is given, the points
+        are only rounded down'''
     if transformation is not None:
         points = nibabel.affines.apply_affine(transformation, points)
-    return numpy.round(points).astype(int)
+    return numpy.floor(points).astype(int)
