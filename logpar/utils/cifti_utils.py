@@ -8,39 +8,41 @@ import nibabel
 
 from ..constrained_ahc import mat2cond_index
 
+VOXEL = 'CIFTI_MODEL_TYPE_VOXELS'
+SURFACE = 'CIFTI_MODEL_TYPE_SURFACE'
 
-CIFTI_STRUCTURES = ["CIFTI_STRUCTURE_ACCUMBENS_LEFT",
-                    "CIFTI_STRUCTURE_ACCUMBENS_RIGHT",
-                    "CIFTI_STRUCTURE_ALL_WHITE_MATTER",
-                    "CIFTI_STRUCTURE_ALL_GREY_MATTER",
-                    "CIFTI_STRUCTURE_AMYGDALA_LEFT",
-                    "CIFTI_STRUCTURE_AMYGDALA_RIGHT",
-                    "CIFTI_STRUCTURE_BRAIN_STEM",
-                    "CIFTI_STRUCTURE_CAUDATE_LEFT",
-                    "CIFTI_STRUCTURE_CAUDATE_RIGHT",
-                    "CIFTI_STRUCTURE_CEREBELLAR_WHITE_MATTER_LEFT",
-                    "CIFTI_STRUCTURE_CEREBELLAR_WHITE_MATTER_RIGHT",
-                    "CIFTI_STRUCTURE_CEREBELLUM",
-                    "CIFTI_STRUCTURE_CEREBELLUM_LEFT",
-                    "CIFTI_STRUCTURE_CEREBELLUM_RIGHT",
-                    "CIFTI_STRUCTURE_CEREBRAL_WHITE_MATTER_LEFT",
-                    "CIFTI_STRUCTURE_CEREBRAL_WHITE_MATTER_RIGHT",
-                    "CIFTI_STRUCTURE_CORTEX",
-                    "CIFTI_STRUCTURE_CORTEX_LEFT",
-                    "CIFTI_STRUCTURE_CORTEX_RIGHT",
-                    "CIFTI_STRUCTURE_DIENCEPHALON_VENTRAL_LEFT",
-                    "CIFTI_STRUCTURE_DIENCEPHALON_VENTRAL_RIGHT",
-                    "CIFTI_STRUCTURE_HIPPOCAMPUS_LEFT",
-                    "CIFTI_STRUCTURE_HIPPOCAMPUS_RIGHT",
-                    "CIFTI_STRUCTURE_OTHER",
-                    "CIFTI_STRUCTURE_OTHER_GREY_MATTER",
-                    "CIFTI_STRUCTURE_OTHER_WHITE_MATTER",
-                    "CIFTI_STRUCTURE_PALLIDUM_LEFT",
-                    "CIFTI_STRUCTURE_PALLIDUM_RIGHT",
-                    "CIFTI_STRUCTURE_PUTAMEN_LEFT",
-                    "CIFTI_STRUCTURE_PUTAMEN_RIGHT",
-                    "CIFTI_STRUCTURE_THALAMUS_LEFT",
-                    "CIFTI_STRUCTURE_THALAMUS_RIGHT"]
+STRUCTURES = ["CIFTI_STRUCTURE_ACCUMBENS_LEFT",
+              "CIFTI_STRUCTURE_ACCUMBENS_RIGHT",
+              "CIFTI_STRUCTURE_ALL_WHITE_MATTER",
+              "CIFTI_STRUCTURE_ALL_GREY_MATTER",
+              "CIFTI_STRUCTURE_AMYGDALA_LEFT",
+              "CIFTI_STRUCTURE_AMYGDALA_RIGHT",
+              "CIFTI_STRUCTURE_BRAIN_STEM",
+              "CIFTI_STRUCTURE_CAUDATE_LEFT",
+              "CIFTI_STRUCTURE_CAUDATE_RIGHT",
+              "CIFTI_STRUCTURE_CEREBELLAR_WHITE_MATTER_LEFT",
+              "CIFTI_STRUCTURE_CEREBELLAR_WHITE_MATTER_RIGHT",
+              "CIFTI_STRUCTURE_CEREBELLUM",
+              "CIFTI_STRUCTURE_CEREBELLUM_LEFT",
+              "CIFTI_STRUCTURE_CEREBELLUM_RIGHT",
+              "CIFTI_STRUCTURE_CEREBRAL_WHITE_MATTER_LEFT",
+              "CIFTI_STRUCTURE_CEREBRAL_WHITE_MATTER_RIGHT",
+              "CIFTI_STRUCTURE_CORTEX",
+              "CIFTI_STRUCTURE_CORTEX_LEFT",
+              "CIFTI_STRUCTURE_CORTEX_RIGHT",
+              "CIFTI_STRUCTURE_DIENCEPHALON_VENTRAL_LEFT",
+              "CIFTI_STRUCTURE_DIENCEPHALON_VENTRAL_RIGHT",
+              "CIFTI_STRUCTURE_HIPPOCAMPUS_LEFT",
+              "CIFTI_STRUCTURE_HIPPOCAMPUS_RIGHT",
+              "CIFTI_STRUCTURE_OTHER",
+              "CIFTI_STRUCTURE_OTHER_GREY_MATTER",
+              "CIFTI_STRUCTURE_OTHER_WHITE_MATTER",
+              "CIFTI_STRUCTURE_PALLIDUM_LEFT",
+              "CIFTI_STRUCTURE_PALLIDUM_RIGHT",
+              "CIFTI_STRUCTURE_PUTAMEN_LEFT",
+              "CIFTI_STRUCTURE_PUTAMEN_RIGHT",
+              "CIFTI_STRUCTURE_THALAMUS_LEFT",
+              "CIFTI_STRUCTURE_THALAMUS_RIGHT"]
 
 
 def save_nifti(filename, data, header=None, affine=None, version=2):
@@ -59,7 +61,7 @@ def load_data(filename):
 
 def is_model_surf(model):
     ''' Returns true if 'model' if of type surface '''
-    return model == 'CIFTI_MODEL_TYPE_SURFACE'
+    return model == SURFACE
 
 
 def text2voxels(text):
@@ -85,14 +87,14 @@ def direction2dimention(direction):
 
 
 def modeltext2indices(text, model):
-    if model == 'CIFTI_MODEL_TYPE_VOXELS':
+    if model == VOXEL:
         return text2voxels(text)
     else:
         return text2indices(text)
 
 
 def indices2modeltext(indices, model):
-    if model == 'CIFTI_MODEL_TYPE_VOXELS':
+    if model == VOXEL:
         return voxels2text(indices)
     else:
         return indices2text(indices)
@@ -402,20 +404,19 @@ def retrieve_head_data(header, cifti_matrix):
 
 def constraint_from_voxels(cifti_header, direction, vertices=None):
     ''' Retrieves the adyacency matrix between voxels '''
-    brainmodels = extract_brainmodel(cifti_header, direction)
+    brainmodels = extract_brainmodel(cifti_header, direction, VOXEL)
 
     def get_voxels(brainmodel):
         structure = brainmodel.attrib['BrainStructure']
-        _, voxels = offset_and_indices(cifti_header, 'CIFTI_MODEL_TYPE_VOXELS',
-                                       structure, direction)
+        _, voxels = offset_and_indices(cifti_header, VOXEL, structure, direction)
         return voxels
 
     # Retrieve the voxels for each brainmodel in the specified direction
-    voxels = [get_voxels(b) for b in brainmodels]
+    voxels = [v for b in brainmodels for v in get_voxels(b)]
 
     if vertices is not None:
         # Filter voxels
-        voxels = [vx for i, vx in enumerate(voxels) if i in vertices]
+        voxels = [vx for vx in voxels if vx in vertices]
 
     def are_neighbors(vox_i, vox_j):
         return next((False for i, j in zip(vox_i, vox_j) if abs(i-j) > 1), True)

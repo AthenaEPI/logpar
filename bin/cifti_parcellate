@@ -16,8 +16,13 @@ if __name__ == "__main__":
                         default="COLUMN",
                         help='Direction to parcellate: ROW or COLUMN')
 
-    parser.add_argument('-constraints', dest='constraints', required=False,
-                        type=str, help='Surface/Volume from were to extract\
+    parser.add_argument('-constrained', action='store_true',
+                        help='If present, the clustering will be constrained \
+                              between neighbors until a minimum size is \
+                              reached')
+
+    parser.add_argument('-surface', dest='surface', required=False,
+                        type=str, help='Surface from were to extract\
                                         neighborhood constraints')
 
     parser.add_argument('-threshold', dest='threshold', required=False,
@@ -42,4 +47,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     cifti_parcellate(args.cifti, args.outfile, args.direction, args.tologodds,
-                     args.constraints, args.threshold, args.min_size, 0)
+                     args.constrained, args.surface, args.threshold,
+                     args.min_size, args.verbose)

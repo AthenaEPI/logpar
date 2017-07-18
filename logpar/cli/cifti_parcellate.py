@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 ''' Function called by the cli cifti_parcellate '''
+import itertools
 import logging
 
 import numpy
@@ -10,7 +11,7 @@ from ..clustering import clustering
 from ..utils import cifti_utils, transform, dendrogram_utils
 
 
-def check_input(cifti_file, direction, constraints, min_size):
+def check_input(cifti_file, direction, min_size):
     ''' Basic input checking '''
 
     if cifti_file.split('.')[-2] not in ['pconn', 'dconn', 'pdconn', 'dpconn']:
@@ -19,30 +20,19 @@ def check_input(cifti_file, direction, constraints, min_size):
     if direction not in ['ROW', 'COLUMN']:
         raise ValueError('Direction should be either ROW or COLUMN')
 
-    if constraints is not None and "surf.gii" != constraints[-8:]:
-        raise NotImplementedError('Sorry, we only accept surface files as \
-                                   constraints right now')
     if min_size < 0:
         raise ValueError("min_size MUST be greater or equal to zero")
 
-    if constraints is None and min_size > 0:
-        raise ValueError("If no constraints are given then \
-                          min_size MUST be zero")
-
 
 def cifti_parcellate(cifti_file, outfile, direction="ROW", to_logodds=True,
-                     constraint=None, threshold=0, min_size=0, verbose=0):
+                     constrained=False, surface=None, threshold=0, min_size=0,
+                     verbose=0):
     ''' Clusters the cifti file using as features the vectors in the given
         direction. Furthermore, the clustering can be constrained to happen
-        only between neighbors UNTIL a minimum size is reached. In this case
-        the constraints MUST come either as: a surface file, from where we will
-        extract the constraints, or as volume with a mask.
-            1. A surface file: only vectors asociated to that surface
-               will be clustered. Neighboring constraints will we derived from
-               the vertices of the surface
-            2. If a volume file is used, only the vectors associated to
-               voxels with a value greater than zero are used. Neighboring
-               constraints will be derived from the location of each voxel
+        only between neighbors UNTIL a minimum size is reached. If the
+        matrix possess a surface model type, then a surface must be given in
+        order to apply a constrained clustering. For the voxel model type, the
+        constrains will be derived from the cifti matrix.
 
         Parameters
         ----------
@@ -56,8 +46,11 @@ def cifti_parcellate(cifti_file, outfile, direction="ROW", to_logodds=True,
         to_logodds: bool (optional)
             If true, features are transformed using the logit function.
             Default: True
-        constraint: cifti surface (optional)
-            Either a surface or a volume file. Default: None
+        constrained: bool (optional)
+            If True, the clustering happens only between neighbors, until a 
+            minimum parcel size is reached. Default: False
+        surface: gifti-file (optional)
+            The surface from which to extract the constraint matrix
         threshold: float (optional)
             Thresolhold to apply to connectivity vectors before clustering.
             Default: 0
@@ -71,32 +64,52 @@ def cifti_parcellate(cifti_file, outfile, direction="ROW", to_logodds=True,
     if verbose:
         logging.basicConfig(level=logging.DEBUG)
 
-    check_input(cifti_file, direction, constraint, min_size)
+    check_input(cifti_file, direction, min_size)
 
     cifti = nibabel.load(cifti_file)
     features = cifti.get_data()[0, 0, 0, 0]
 
     if direction == 'COLUMN':
         features = numpy.transpose(features)
+    
+    modeltype, structure = None, None
+    if constrained:
+        if surface:
+            constraint = gifti.read(surface)
+            modeltype = cifti_utils.SURFACE
+            structure = cifti_utils.principal_structure(constraint)
 
-    if constraint is not None:
-        constraint = gifti.read(constraint)
-        modeltype = 'CIFTI_MODEL_TYPE_SURFACE'
-        structure = cifti_utils.principal_structure(constraint)
-
-        # Get the indices in which the structure-features are
-        offset, indices = cifti_utils.offset_and_indices(cifti.header,
-                                                         modeltype, structure,
-                                                         direction)
-        indices = numpy.array(indices)
-        features = features[offset:offset+len(indices)]
-        logging.debug("structure: {}, direction: {}, offset: {},\
-                       len(indices): {}, shape:{}".format(structure, direction,
-                                                          offset, len(indices),
-                                                          features.shape))
+            # Get the indices in which the structure-features are
+            offset, indices = cifti_utils.offset_and_indices(cifti.header,
+                                                             modeltype,
+                                                             structure,
+                                                             direction)
+            indices = numpy.array(indices)
+            features = features[offset:offset+len(indices)]
+        else:
+            modeltype = cifti_utils.VOXEL
+            bmodels = cifti_utils.extract_brainmodel(cifti.header, direction,
+                                                     modeltype)
+            offset_and_indices = []
+            for bmodel in bmodels:
+                structure = bmodel.attrib['BrainStructure']
+                offset_and_indices.append(
+                    cifti_utils.offset_and_indices(cifti.header, modeltype,
+                                                   structure, direction)
+                    )
+            
+            filtered = numpy.zeros((sum([off for off, _ in offset_and_indices]),
+                                   features.shape[1]))
+            
+            off = 0
+            for offset, indices in offset_and_indices:
+                lindices = len(indices)
+                filtered[off:off+lindices] = features[offset:offset+lindices]
+                off += lindices
+            
+            features = filtered
 
     logging.info("Shape of features: {}".format(features.shape))
-    logging.info("Nonzero rows: {}".format((features.sum(1) > 0).sum()))
 
     if threshold > 0:
         logging.info("Applying Threshold({})".format(threshold))
@@ -105,8 +118,6 @@ def cifti_parcellate(cifti_file, outfile, direction="ROW", to_logodds=True,
     logging.info("Discarding empty rows/columns of features")
     nzr_rows = (features.sum(1)).nonzero()[0]
     nzr_cols = (features.sum(0)).nonzero()[0]
-    logging.info("Number of nzr rows/cols: {} {}".format(len(nzr_rows),
-                                                         len(nzr_cols)))
     features = features[nzr_rows[:, None], nzr_cols]
 
     logging.info("New shape: {}".format(features.shape))
@@ -123,55 +134,57 @@ def cifti_parcellate(cifti_file, outfile, direction="ROW", to_logodds=True,
             # Send the vectors to logodds space and traslate them to mantain
             # sparsity. We can do this because the Euclidean distance is
             # invariant respect to traslations
-            logging.info(i)
             features[i:i+stp] = transform.to_logodds(features[i:i+stp],
                                                      traslate=True)
 
-    nbr_nzr_rows = len((features.sum(1)).nonzero()[0])
-    nbr_nzr_cols = len((features.sum(0)).nonzero()[0])
-    logging.info("Number of nzr rows/cols: {} {}".format(nbr_nzr_rows,
-                                                         nbr_nzr_cols))
     ady_matrix = None
-    if constraint is not None:
-        # Lets calculate the adyacency matrix from the surface
-        indices = indices[nzr_rows]  # Throw empty tractograms
-        ady_matrix = cifti_utils.constraint_from_surface(constraint, indices)
-
-    logging.debug("Min, Max in matrix: {}, {}".format(features.min(),
-                                                      features.max()))
+    if constrained:
+        if surface:
+            # Lets calculate the adyacency matrix from the surface
+            indices = indices[nzr_rows]  # Throw empty tractograms
+            ady_matrix = cifti_utils.constraint_from_surface(constraint,
+                                                             indices)
+        else:
+            _, indices = zip(*offset_and_indices)
+            indices = [v for vox in indices for v in vox]  # concat voxels
+            ady_matrix = cifti_utils.constraint_from_voxels(cifti.header,
+                                                            direction,
+                                                            indices)
     # Let's cluster
     dendro = clustering(features, method='ward', constraints=ady_matrix,
                         min_size=min_size, copy=0)
     # And save in disk
     xml_structures = cifti_utils.extract_brainmodel(cifti.header, direction)
-    if constraint is not None:
-        xml_structures = cifti_utils.extract_brainmodel(cifti.header,
-                                                        direction,
-                                                        'CIFTI_MODEL_TYPE_SURFACE',
-                                                        structure)
+    if constrained:
+        if surface:
+            xml_structures = cifti_utils.extract_brainmodel(cifti.header,
+                                                            direction,
+                                                            modeltype,
+                                                            structure)
+        else:
+            xml_structures = bmodels
+
     new_offset = 0
     vstruct = False
     for structure in xml_structures:
-
-        if (structure.attrib['ModelType'] == 'CIFTI_MODEL_TYPE_SURFACE'):
-
-            _, indices = cifti_utils.offset_and_indices(cifti.header,
-                                                        'CIFTI_MODEL_TYPE_SURFACE',
-                                                        structure.attrib['BrainStructure'],
-                                                        direction)
-            indices = numpy.array(indices)
-            indices = indices[nzr_rows[:len(indices)]]
-            structure[0].text = cifti_utils.indices2text(indices)
-            new_count = len(indices)
-        else:
-            #TODO: Implement this function and correct this else
-            #_, indices = cifti_utils.voxels_attributes(cifti.header,
-            #                                           structure.attrib['BrainStructure']
-            #                                           direction)
+        modeltype = structure.attrib['ModelType']
+        _, indices = cifti_utils.offset_and_indices(cifti.header,
+                                                    modeltype,
+                                                    structure.attrib['BrainStructure'],
+                                                    direction)
+        indices = numpy.array(indices)
+        indices = indices[nzr_rows[:len(indices)]]
+        
+        if modeltype == cifti_utils.VOXEL:
+            structure[0].text = cifti_utils.voxels2text(indices)
             vstruct = True
-            new_count = int(structure.attrib['IndexCount'])
+        else:
+            structure[0].text = cifti_utils.indices2text(indices)
+
+        new_count = len(indices)
         structure.attrib['IndexOffset'] = str(new_offset)
         structure.attrib['IndexCount'] = str(new_count)
+
         new_offset += new_count
 
     if vstruct > 0:

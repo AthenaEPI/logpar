@@ -109,4 +109,4 @@ def transform_and_round(points, transformation=None):
         are only rounded down'''
     if transformation is not None:
         points = nibabel.affines.apply_affine(transformation, points)
-    return numpy.floor(points).astype(int)
+    return numpy.round(points).astype(int)
