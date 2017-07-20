@@ -67,17 +67,20 @@ def cifti_filter(cifti_file, filter_file, outfile, direction="ROW", verbose=0):
     filtered_structures = []
     offset = 0
     for (modeltype, structure), indices in all_structures.iteritems():
-        new_order += cifti_utils.cifti_filter_indices(cifti.header, direction,
-                                                      modeltype, structure,
-                                                      indices)
+        findices = cifti_utils.cifti_filter_indices(cifti.header, direction,
+                                                    modeltype, structure,
+                                                    indices)
+        findices = numpy.array(findices)
+        indices = numpy.array(indices)[findices!=-1]
         size = all_sizes[(modeltype, structure)]
         filtered_structures.append(cifti_header.brain_model_xml(modeltype,
                                                                 structure,
                                                                 indices,
                                                                 offset, size))
+        new_order += list(findices[findices!=-1])
         offset += len(indices)
     new_order = numpy.array(new_order)
-
+    
     # Filter matrix
     if direction == 'ROW':
         filtered_data = data[new_order]
