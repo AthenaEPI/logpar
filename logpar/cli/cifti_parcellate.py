@@ -47,7 +47,7 @@ def cifti_parcellate(cifti_file, outfile, direction="ROW", to_logodds=True,
             If true, features are transformed using the logit function.
             Default: True
         constrained: bool (optional)
-            If True, the clustering happens only between neighbors, until a 
+            If True, the clustering happens only between neighbors, until a
             minimum parcel size is reached. Default: False
         surface: gifti-file (optional)
             The surface from which to extract the constraint matrix
@@ -71,7 +71,7 @@ def cifti_parcellate(cifti_file, outfile, direction="ROW", to_logodds=True,
 
     if direction == 'COLUMN':
         features = numpy.transpose(features)
-    
+
     modeltype, structure = None, None
     if constrained:
         if surface:
@@ -98,8 +98,9 @@ def cifti_parcellate(cifti_file, outfile, direction="ROW", to_logodds=True,
                                                    structure, direction)
                     )
             
-            filtered = numpy.zeros((sum([off for off, _ in offset_and_indices]),
-                                   features.shape[1]))
+            filtered = numpy.zeros((sum([len(ind)
+                                         for _, ind in offset_and_indices]),
+                                    features.shape[1]))
             
             off = 0
             for offset, indices in offset_and_indices:
@@ -147,6 +148,8 @@ def cifti_parcellate(cifti_file, outfile, direction="ROW", to_logodds=True,
         else:
             _, indices = zip(*offset_and_indices)
             indices = [v for vox in indices for v in vox]  # concat voxels
+            indices = numpy.array(indices)[nzr_rows] # filter the zero ones
+            indices = map(tuple, indices)
             ady_matrix = cifti_utils.constraint_from_voxels(cifti.header,
                                                             direction,
                                                             indices)
