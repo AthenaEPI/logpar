@@ -100,7 +100,8 @@ def tractogram(particles, shm, mask, affine, step_size, maxlen, algo,
         outinfo = os.path.join(outdir, "info_{}.trk".format(wpid))
         numpy.savetxt(outinfo, used_seeds)
         outfile = os.path.join(outdir, "stream_{}.trk".format(wpid))
-        streamline_utils.save_stream(outfile, streamlines, affine)
+        streamline_utils.save_stream(outfile, streamlines, affine, mask.shape,
+                                     mask.header.get_zooms())
 
     # I have a image which represents the connectivity of each seed over a
     # mask. Now I need to create the cifti header

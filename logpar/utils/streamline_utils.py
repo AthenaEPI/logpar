@@ -4,11 +4,12 @@ import nibabel
 from dipy.direction import ProbabilisticDirectionGetter, DeterministicMaximumDirectionGetter
 from dipy.data import default_sphere
 
-def save_stream(outfile, streamlist, affine_to_rasmm=None):
+def save_stream(outfile, streamlist, affine_to_rasmm=None, dimention=(1, 1, 1),
+                voxel_size=(1, 1, 1)):
     ''' Function to save a set of streamlines. The streamlines can be in
         any space. If the streamlines are in rasmm space, then it's not
         necessary to specify a transformation. Otherwhise, the transformation
-        from the current space should be specified.
+        from the current space to rasmm MUST be specified.
 
         Parameters
         ----------
@@ -26,7 +27,12 @@ def save_stream(outfile, streamlist, affine_to_rasmm=None):
 
     tract = nibabel.streamlines.Tractogram(streamlist,
                                            affine_to_rasmm=affine_to_rasmm)
-    nibabel.streamlines.save(tract, outfile)
+    hdr_dict = {'dimensions': dimention,
+                'voxel_sizes': voxel_size,
+                'voxel_to_rasmm': affine_to_rasmm,
+                'voxel_order': 'LAS'}
+    trk_file = nibabel.streamlines.TrkFile(tract, hdr_dict)
+    trk_file.save(outfile)
 
 
 def load_stream(streamfile, affine_to_rasmm=None):

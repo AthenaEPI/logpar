@@ -74,7 +74,8 @@ def streamline(particles, shm, mask, affine, step_size, maxlen, algo,
     
     # Save streamlines
     outfile = os.path.join(outdir, "stream_{}.trk".format(wpid))
-    streamline_utils.save_stream(outfile, streamlines, affine)
+    streamline_utils.save_stream(outfile, streamlines, affine, mask.shape,
+                                 mask.header.get_zooms())
     
     # Save streamlines' origin and amount
     outinfo = os.path.join(outdir, "info_{}.txt".format(wpid))
