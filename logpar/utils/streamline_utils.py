@@ -30,7 +30,7 @@ def save_stream(outfile, streamlist, affine_to_rasmm=None, dimention=(1, 1, 1),
     hdr_dict = {'dimensions': dimention,
                 'voxel_sizes': voxel_size,
                 'voxel_to_rasmm': affine_to_rasmm,
-                'voxel_order': 'LAS'}
+                'voxel_order': "".join(nibabel.aff2axcodes(affine_to_rasmm))}
     trk_file = nibabel.streamlines.TrkFile(tract, hdr_dict)
     trk_file.save(outfile)
 
