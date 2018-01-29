@@ -147,7 +147,7 @@ def header_union(header1, header2):
     return header_new
 
 
-def soft_colors_xml_label_map(nlabels):
+def soft_colors_xml_label_map(nlabels, offset=0):
     ''' Returns an xml Element which represents a GiftiLabelTable
         with soft colors
 
@@ -155,6 +155,8 @@ def soft_colors_xml_label_map(nlabels):
         ----------
         nlabels: int
             Number of colors to represent in the table
+        offset: int
+            Number from where to start counting the labels
 
         Returns
         -------
@@ -182,12 +184,12 @@ def soft_colors_xml_label_map(nlabels):
         label = xml.SubElement(label_table, 'Label',
                                attrib={'Alpha':'1', 'Blue':str(blue),
                                        'Red':str(red), 'Green':str(green),
-                                       'Key':str(key)})
-        label.text = str(key)
+                                       'Key':str(key+offset)})
+        label.text = str(key+offset)
     return named_map
 
 
-def create_label_header(xml_structures, nparcels):
+def create_label_header(xml_structures, nparcels, offset=0):
     ''' Creates a label header for different structures. Right now this is
         a draft. TODO: Extend to work with many structures at the same time '''
     cifti_extension = xml.Element('CIFTI', {'Version': '2'})
@@ -202,7 +204,7 @@ def create_label_header(xml_structures, nparcels):
                                     {'AppliesToMatrixDimension': '0',
                                      'IndicesMapToDataType': LABELS})
 
-    mat_indx_map_0.insert(0, soft_colors_xml_label_map(nparcels))
+    mat_indx_map_0.insert(0, soft_colors_xml_label_map(nparcels, offset))
 
     # Second dimention: what the columns represents.
     mat_indx_map_1 = xml.SubElement(matrix, 'MatrixIndicesMap',
@@ -273,6 +275,7 @@ def create_conn_header(row_structures, col_structures, row_dimention=None,
 
 def brain_model_xml(mtype, name, coord, offset, size):
     name, mtype, offset, size = map(str, [name, mtype, offset, size])
+
     brain_model = xml.Element('BrainModel', attrib={'IndexOffset':offset,
                                                     'IndexCount':str(len(coord)),
                                                     'ModelType':mtype,

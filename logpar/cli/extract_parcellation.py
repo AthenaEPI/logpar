@@ -13,7 +13,7 @@ def check_input(outfile):
         raise ValueError("Outfile MUST be .txt or .dlabel.nii")
 
 
-def extract_parcellation(dendrogram_file, nparcels, outfile):
+def extract_parcellation(dendrogram_file, nparcels, outfile, offset=0):
     ''' Extracts a parcellation with a predefined number of parcels. If
         setted, also writes a cifti label file
 
@@ -25,6 +25,8 @@ def extract_parcellation(dendrogram_file, nparcels, outfile):
             Numbers of parcels the extracted parcellation should have
         out: string
             File where to write the parcellation (Either TXT or CIFTI DLABEL)
+        offset: int
+            Number from where to start counting labels
 
         Returns
         -------
@@ -46,12 +48,14 @@ def extract_parcellation(dendrogram_file, nparcels, outfile):
         if parcellation_size == nparcels:
             break
 
+    parcellation += offset
+
     # Save the parcellation
     if outfile.endswith('txt'):
         numpy.savetxt(outfile, parcellation, delimiter=',')
     else:
         cifti_label_header = cifti_header.create_label_header(xml_structures,
-                                                              nparcels)
+                                                              nparcels, offset)
 
         cifti_utils.save_nifti(outfile,
                                parcellation[None, None, None, None, None, ...],

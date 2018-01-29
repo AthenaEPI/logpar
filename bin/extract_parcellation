@@ -14,10 +14,14 @@ if __name__ == "__main__":
     parser.add_argument('-parcels', dest='nparcels', required=True,
                         type=int, help='Number of parcels to extract')
 
+    parser.add_argument('-offset', dest='offset', default=0,
+                        type=int, help='Number from where to start labeling')
+
     parser.add_argument('-out', dest='outfile', type=str, required=True,
                         help='txt or dlabel.nii file where to write the \
                               resulting parcellation')
 
     args = parser.parse_args()
 
-    extract_parcellation(args.dendrogram, args.nparcels, args.outfile)
+    extract_parcellation(args.dendrogram, args.nparcels, args.outfile,
+                         offset=args.offset)

@@ -1,3 +1,7 @@
+import numpy as np
+
+from scipy import ndimage
+
 def grad_descend(start_pos, gradient, dist=2, weight=[1, 1, 1],
                  step_size=0.1, eps=1e-4):
     ''' Walks a determinated distance following the gradient field '''

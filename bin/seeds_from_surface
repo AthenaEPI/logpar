@@ -1,0 +1,34 @@
+#!/usr/bin/env python
+''' Command Line Interface of seeds_from_surface '''
+import argparse
+from logpar.cli.seeds_from_surface import seeds_from_surface
+
+if __name__ == "__main__":
+    # Parser
+    parser = argparse.ArgumentParser(description='Seeds creator')
+
+    parser.add_argument('-surface', dest='surface', required=True, type=str,
+                        help='Surface in gifti format')
+
+    parser.add_argument('-mask', dest='mask', required=True, type=str,
+                        help='Mask for the surface, in gifti format')
+
+    parser.add_argument('-wmm', dest='wmmask', type=str, required=True,
+                        help='white matter mask')
+
+    parser.add_argument('-mm', dest='mm', type=float, required=True,
+                        help='mm to enter the cortex')
+
+    parser.add_argument('-out', dest='outfile', required=True, type=str,
+                        help='Text file with the position of each seed')
+
+    parser.add_argument('-vol_out', dest='vol_out', type=str,
+                        help="Labeled volume with seeds' positions")
+
+    parser.add_argument('-wbc', dest='wbcommand', type=str,
+                        default='wb_command', help='wbcommand exec file')
+
+    args = parser.parse_args()
+
+    seeds_from_surface(args.surface, args.mask, args.wmmask, args.mm,
+                       args.outfile, args.vol_out, args.wbcommand)

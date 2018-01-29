@@ -176,9 +176,15 @@ def extract_xml_header(cifti_header):
        xml_entitie
        Returns an xml (Elemtree) object
     '''
-    cxml = xml.fromstring(cifti_header.extensions[0].get_content())
+    is_nifti2 = isinstance(cifti_header, nibabel.Nifti2Header)
+    is_nifti1 = isinstance(cifti_header, nibabel.Nifti1Header)
 
-    return cxml
+    if is_nifti1 or is_nifti2:
+        cxml = cifti_header.extensions[0].get_content()
+    else:
+        cxml = cifti_header.to_xml()
+
+    return xml.fromstring(cxml)
 
 
 def extract_matrixindicesmap(cifti_header, direction):

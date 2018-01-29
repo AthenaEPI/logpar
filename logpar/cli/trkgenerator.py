@@ -129,7 +129,7 @@ def trkgenerator(dmri_file, bvals_file, bvecs_file, mask_file, seeds_file,
     pool = multiprocessing.Pool(nbr_process)
 
     streamline_ = partial(streamline, particles, shm_file, mask_file,
-                           affine, step, maxlen, algorithm, outdir)
+                          affine, step, maxlen, algorithm, outdir)
 
     logging.debug("Starting multiprocessing environment")
     res_streamlines = pool.map(streamline_, list(enumerate(zip(seed_chunks,

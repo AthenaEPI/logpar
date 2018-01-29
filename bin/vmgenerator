@@ -30,7 +30,7 @@ if __name__ == "__main__":
                         default=5000, help='number of particles to simulate')
 
     parser.add_argument('-step', dest='step', type=float,
-                        default=0.5, help='step size')
+                        default=1, help='step size')
 
     parser.add_argument('-maxlength', dest='maxlen', type=float,
                         default=200, help='maximum length of streamlines')
