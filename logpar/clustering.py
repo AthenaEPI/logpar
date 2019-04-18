@@ -21,7 +21,7 @@ def clustering(features, method='ward', constraints=None, min_size=0,
     ''' Clusters features using the selected method. If indicated, it
         constraints the clustering between neighbors UNTIL clusters reach a
         minimum size. After, the clustering continues WITHOUT constraints.
-        
+
         Parameters
         ----------
         features: array_like
@@ -38,7 +38,7 @@ def clustering(features, method='ward', constraints=None, min_size=0,
             modifying the INPUT features matrix.
         verbose: bool
             if TRUE displays debbuging information
-        
+
         Returns
         -------
         dendrogram
@@ -49,17 +49,17 @@ def clustering(features, method='ward', constraints=None, min_size=0,
     n = features.shape[0]
 
     if constraints is None:
-        constraints = numpy.ones(n*(n-1)/2, dtype=numpy.int8)
+        constraints = numpy.ones(n*(n-1)//2, dtype=numpy.int8)
     else:
         if len(constraints.shape) > 1:
             constraints = distance.squareform(constraints)
 
-        if len(constraints) != (n*(n-1)/2):
+        if len(constraints) != (n*(n-1)//2):
             raise ValueError('Wrong shape in constraint matrix')
 
         constraints = constraints.astype(numpy.int8)
 
-    min_heap = heap(n*(n+1)/2)
+    min_heap = heap(n*(n+1)//2)
 
     nonzero_constraints = constraints.nonzero()[0]
 

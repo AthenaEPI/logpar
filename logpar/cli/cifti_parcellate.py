@@ -2,12 +2,12 @@
 ''' Function called by the cli cifti_parcellate '''
 import logging
 
-import numpy
-import nibabel
-from nibabel import gifti
+import numpy as np
+import citrix
+import nimesh
 
 from ..clustering import clustering
-from ..utils import cifti_utils, transform, dendrogram_utils
+from ..utils import transform, dendrogram
 
 
 def check_input(cifti_file, direction, constraints, min_size):
@@ -20,7 +20,7 @@ def check_input(cifti_file, direction, constraints, min_size):
         raise ValueError('Direction should be either ROW or COLUMN')
 
     if constraints is not None and "surf.gii" != constraints[-8:]:
-        raise NotImplementedError('Sorry, we only accept surface files as \
+        raise NotImplementedError('Sorry, we only accept surf.gii files as \
                                    constraints right now')
     if min_size < 0:
         raise ValueError("min_size MUST be greater or equal to zero")
@@ -73,41 +73,22 @@ def cifti_parcellate(cifti_file, outfile, direction="ROW", to_logodds=True,
 
     check_input(cifti_file, direction, constraint, min_size)
 
-    cifti = nibabel.load(cifti_file)
-    features = cifti.get_data()[0, 0, 0, 0]
+    cifti = citrix.load(cifti_file)
+    features = cifti.get_data()
 
+    brainmodel = list(cifti.row.brain_models)
     if direction == 'COLUMN':
-        features = numpy.transpose(features)
+        features = np.transpose(features)
+        brainmodel = list(cifti.column.brain_models)
 
-    if constraint is not None:
-        constraint = gifti.read(constraint)
-        structure = cifti_utils.principal_structure(constraint)
+    if len(brainmodel) > 1:
+        raise ValueError('Multiple brain models in the direction to parcel')
 
-        # Get the indices in which the structure-features are
-        offset, indices = cifti_utils.surface_attributes(cifti.header,
-                                                         structure,
-                                                         direction)
-        features = features[offset:offset+len(indices)]
-        logging.debug("structure: {}, direction: {}, offset: {},\
-                       len(indices): {}, shape:{}".format(structure, direction,
-                                                          offset, len(indices),
-                                                          features.shape))
-
-    logging.info("Shape of features: {}".format(features.shape))
-    logging.info("Nonzero rows: {}".format((features.sum(1) > 0).sum()))
+    brainmodel = brainmodel[0]
 
     if threshold > 0:
         logging.info("Applying Threshold({})".format(threshold))
         features[features < threshold] = 0
-
-    logging.info("Discarding empty rows/columns of features")
-    nzr_rows = (features.sum(1)).nonzero()[0]
-    nzr_cols = (features.sum(0)).nonzero()[0]
-    logging.info("Number of nzr rows/cols: {} {}".format(len(nzr_rows),
-                                                         len(nzr_cols)))
-    features = features[nzr_rows[:, None], nzr_cols]
-
-    logging.info("New shape: {}".format(features.shape))
 
     if to_logodds:
         vmin, vmax = features.min(), features.max()
@@ -117,7 +98,7 @@ def cifti_parcellate(cifti_file, outfile, direction="ROW", to_logodds=True,
 
         logging.info("Sending to LogOdds")
         stp = 5000
-        for i in xrange(0, features.shape[0], stp):
+        for i in range(0, features.shape[0], stp):
             # Send the vectors to logodds space and traslate them to mantain
             # sparsity. We can do this because the Euclidean distance is
             # invariant respect to traslations
@@ -125,55 +106,20 @@ def cifti_parcellate(cifti_file, outfile, direction="ROW", to_logodds=True,
             features[i:i+stp] = transform.to_logodds(features[i:i+stp],
                                                      traslate=True)
 
-    nbr_nzr_rows = len((features.sum(1)).nonzero()[0])
-    nbr_nzr_cols = len((features.sum(0)).nonzero()[0])
-    logging.info("Number of nzr rows/cols: {} {}".format(nbr_nzr_rows,
-                                                         nbr_nzr_cols))
     ady_matrix = None
     if constraint is not None:
-        # Lets calculate the adyacency matrix from the surface
-        indices = indices[nzr_rows]  # Throw empty tractograms
-        ady_matrix = cifti_utils.constraint_from_surface(constraint, indices)
+        model_type = brainmodel.model_type
 
-    logging.debug("Min, Max in matrix: {}, {}".format(features.min(),
-                                                      features.max()))
+        if model_type == citrix.models.VOXEL:
+            raise NotImplementedError()
+        elif model_type == citrix.models.SURFACE:
+            used_indices = np.array(brainmodel.vertex_indices)
+            ady_matrix = nimesh.io.load(constraint).adjacency_matrix.todense()
+            ady_matrix = ady_matrix[used_indices[:, None], used_indices]
+
     # Let's cluster
     dendro = clustering(features, method='ward', constraints=ady_matrix,
                         min_size=min_size, copy=0)
+
     # And save in disk
-    xml_structures = cifti_utils.extract_brainmodel(cifti.header,
-                                                    'ALL',
-                                                    direction)
-    if constraint is not None:
-        xml_structures = cifti_utils.extract_brainmodel(cifti.header,
-                                                        structure,
-                                                        direction)
-    new_offset = 0
-    vstruct = False
-    for structure in xml_structures:
-
-        if (structure.attrib['ModelType'] == 'CIFTI_MODEL_TYPE_SURFACE'):
-
-            _, indices = cifti_utils.surface_attributes(cifti.header,
-                                                        structure.attrib['BrainStructure'],
-                                                        direction)
-            indices = indices[nzr_rows[:len(indices)]]
-            structure[0].text = cifti_utils.indices2text(indices)
-            new_count = len(indices)
-        else:
-            #TODO: Implement this function and correct this else
-            #_, indices = cifti_utils.voxels_attributes(cifti.header,
-            #                                           structure.attrib['BrainStructure']
-            #                                           direction)
-            vstruct = True
-            new_count = int(structure.attrib['IndexCount'])
-        structure.attrib['IndexOffset'] = str(new_offset)
-        structure.attrib['IndexCount'] = str(new_count)
-        new_offset += new_count
-
-    if vstruct > 0:
-        # There's a voxel structure, we need to add volume information
-        volume_xml = cifti_utils.extract_volume(cifti.header, direction)
-        xml_structures += volume_xml
-
-    dendrogram_utils.save(outfile, dendro, xml_structures=xml_structures)
+    dendrogram.save(outfile, dendro, [brainmodel])

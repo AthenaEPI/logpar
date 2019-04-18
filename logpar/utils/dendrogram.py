@@ -26,7 +26,7 @@ def save(outfile, dendrogram, xml_structures=None):
     if xml_structures is not None:
         for structure in xml_structures:
             # Remove newlines
-            cifti_string = " ".join(xml.tostring(structure).split())
+            cifti_string = str(structure.to_xml())
             header += 'CIFTI {}\n'.format(cifti_string)
     numpy.savetxt(outfile, dendrogram, delimiter=',', header=header)
 
