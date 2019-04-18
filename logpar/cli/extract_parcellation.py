@@ -1,10 +1,10 @@
 ''' Extract a parcellation from a dendrogram '''
 import logging
-
-import numpy
+import citrix
+import numpy as np
 from scipy.cluster.hierarchy import fcluster
 
-from ..utils import cifti_utils, cifti_header, dendrogram_utils
+from ..utils import cifti_header, dendrogram
 
 
 def check_input(outfile):
@@ -32,15 +32,15 @@ def extract_parcellation(dendrogram_file, nparcels, outfile):
             One or more files a created '''
     check_input(outfile)
 
-    dendrogram, xml_structures = dendrogram_utils.load(dendrogram_file)
+    dendro, xml_structures = dendrogram.load(dendrogram_file)
 
-    heights = sorted(numpy.unique(dendrogram[:, 2]))
+    heights = sorted(np.unique(dendro[:, 2]))
     # If WARD was used, there's a direct mapping between the number of
     # parcels and the position of the height in the tree
-    heights = numpy.hstack(([heights[2-nparcels]], heights))
+    heights = np.hstack(([heights[2-nparcels]], heights))
     logging.debug("len(heights): {}".format(len(heights)))
     for height in heights:
-        parcellation = fcluster(dendrogram, height, criterion='distance')
+        parcellation = fcluster(dendro, height, criterion='distance')
         parcellation_size = parcellation.max()
 
         if parcellation_size == nparcels:
@@ -48,11 +48,10 @@ def extract_parcellation(dendrogram_file, nparcels, outfile):
 
     # Save the parcellation
     if outfile.endswith('txt'):
-        numpy.savetxt(outfile, parcellation, delimiter=',')
+        np.savetxt(outfile, parcellation, delimiter=',')
     else:
         cifti_label_header = cifti_header.create_label_header(xml_structures,
                                                               nparcels)
 
-        cifti_utils.save_cifti(outfile,
-                               parcellation[None, None, None, None, None, ...],
-                               header=cifti_label_header)
+        citrix.save(outfile, parcellation[None, None, None, None, None, ...],
+                    header=cifti_label_header)
