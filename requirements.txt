@@ -1,4 +1,5 @@
 nibabel
+git+git://github.com/gagdiez/citrix.git
 numpy
 scipy
 scikit-image
