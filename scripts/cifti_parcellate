@@ -9,12 +9,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Tool to cluster a cifti \
                                      connectivity file. ')
 
-    parser.add_argument('-cifti', dest='cifti', required=True, type=str,
+    parser.add_argument(dest='cifti', type=str,
                         help='Connectivity matrix to cluster')
 
-    parser.add_argument('-direction', dest='direction', type=str,
-                        default="COLUMN",
+    parser.add_argument('direction', type=str,
                         help='Direction to parcellate: ROW or COLUMN')
+
+    parser.add_argument('outfile', type=str,
+                        help='outfile to write the dendrogram (CSV file)')
 
     parser.add_argument('-constraints', dest='constraints', required=False,
                         type=str, help='Surface/Volume from were to extract\
@@ -31,10 +33,6 @@ if __name__ == "__main__":
     parser.add_argument('-min_size', dest='min_size', required=False,
                         type=float, default=45,
                         help='Threshold to apply before clustering')
-
-    parser.add_argument('-out', dest='outfile', required=True,
-                        type=str, help='outfile to write the dendrogram as a\
-                                        csv file')
 
     args = parser.parse_args()
 

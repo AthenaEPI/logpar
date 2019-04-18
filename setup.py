@@ -17,14 +17,13 @@ ext_modules = [extension.Extension(ahc_module, [cfile],
 
 setup(name=package_name,
       version='0.2',
-      description='Tools to simplify the process of making tractography,\
-                   create connectomes and parcellate subjects in the HCP',
+      description='Tools to parcellate connectivity matrices',
       url='http://github.com/AthenaEPI/logpar',
       author='Gallardo Diez, Guillermo Alejandro',
-      author_email='guillermo-gallardo.diez@inria.fr',
+      author_email='gallardo@cbs.mpg.de',
       include_package_data=True,
       ext_modules=ext_modules,
       packages=[package_name, cli_module, utils_module],
-      scripts=['bin/cifti_parcellate', 'bin/extract_parcellation',
-               'bin/cifti_average'],
+      scripts=['scripts/cifti_parcellate', 'scripts/extract_parcellation',
+               'scripts/cifti_average'],
       zip_safe=False)
