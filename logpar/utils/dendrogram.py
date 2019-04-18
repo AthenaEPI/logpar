@@ -1,6 +1,6 @@
 ''' Utils to manipulate dendrograms with CIFTI information '''
 import xml.etree.ElementTree as xml
-import numpy
+import numpy as np
 
 def save(outfile, dendrogram, xml_structures=None):
     ''' Saves the dendrogram in csv format, including the xml
@@ -26,9 +26,9 @@ def save(outfile, dendrogram, xml_structures=None):
     if xml_structures is not None:
         for structure in xml_structures:
             # Remove newlines
-            cifti_string = str(structure.to_xml())
+            cifti_string = structure.to_xml().decode("utf-8")
             header += 'CIFTI {}\n'.format(cifti_string)
-    numpy.savetxt(outfile, dendrogram, delimiter=',', header=header)
+    np.savetxt(outfile, dendrogram, delimiter=',', header=header)
 
 
 def load(dendrogram_file, return_xml=True):
@@ -49,7 +49,7 @@ def load(dendrogram_file, return_xml=True):
         list
             List of xml_entities
         '''
-    dendrogram = numpy.loadtxt(dendrogram_file, delimiter=',')
+    dendrogram = np.loadtxt(dendrogram_file, delimiter=',')
 
     if not return_xml:
         return dendrogram
